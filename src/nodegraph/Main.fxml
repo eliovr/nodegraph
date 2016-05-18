@@ -22,7 +22,7 @@
             <AnchorPane fx:id="canvas" prefHeight="200.0" prefWidth="200.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1" />
             <VBox prefHeight="788.0" prefWidth="300.0" style="-fx-background-color: #F2F2F2;">
                <children>
-                  <TextArea fx:id="textAreaNodes" prefHeight="200.0" prefWidth="200.0" promptText="Nodes e.g. ">
+                  <TextArea fx:id="textAreaNodes" prefHeight="120.0" prefWidth="275.0" promptText="Nodes e.g. ">
                      <VBox.margin>
                         <Insets bottom="15.0" right="10.0" />
                      </VBox.margin>
@@ -41,12 +41,12 @@
                         <Insets top="10.0" />
                      </VBox.margin>
                   </Label>
-                  <ChoiceBox fx:id="edgeTypes" prefHeight="25.0" prefWidth="273.0">
+                  <ChoiceBox fx:id="edgeTypes" prefHeight="43.0" prefWidth="273.0">
                      <VBox.margin>
                         <Insets bottom="15.0" top="5.0" />
                      </VBox.margin>
                   </ChoiceBox>
-                  <ColorPicker fx:id="edgeColor" prefHeight="50.0" prefWidth="272.0">
+                  <ColorPicker fx:id="edgeColor" prefHeight="45.0" prefWidth="272.0">
                      <VBox.margin>
                         <Insets bottom="15.0" />
                      </VBox.margin>

@@ -13,6 +13,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.control.Label;
 import javafx.scene.effect.BoxBlur;
 import javafx.scene.effect.ColorAdjust;
 import javafx.scene.paint.Color;
@@ -46,13 +47,12 @@ public class GraphEdge {
     private Group body;
     private Path path;
     private Line dashLine;
-    private DoubleProperty width = new SimpleDoubleProperty();
-    private DoubleProperty opacity = new SimpleDoubleProperty();
-    private DoubleProperty dash = new SimpleDoubleProperty();
-    private ObjectProperty<Color> color = new SimpleObjectProperty();
-    private BoxBlur blur;
-    private ColorAdjust colorAdjust;
+    private Label label;
     
+    private ObjectProperty<Color> color = new SimpleObjectProperty();
+    private DoubleProperty dash = new SimpleDoubleProperty();
+    private ColorAdjust colorAdjust;
+    private BoxBlur blur;
     
     public GraphEdge (GraphNode fromNode, GraphNode toNode, byte edgeType, byte direction) {
         this.source = fromNode;
@@ -61,24 +61,22 @@ public class GraphEdge {
         this.direction = direction;
         
         body = new Group();
-        blur = new BoxBlur();
-        colorAdjust = new ColorAdjust();
-        
         path = new Path();
-        path.strokeWidthProperty().bind(width);
+        label = new Label();
+        colorAdjust = new ColorAdjust();
+        blur = new BoxBlur();
+        dashLine = new Line();
+        
         path.strokeProperty().bind(color);
         path.fillProperty().bind(color);
         path.setEffect(colorAdjust);
         
-        dashLine = new Line();
         dashLine.setStrokeWidth(GraphNode.RADIUS);
         dashLine.setStroke(Color.BLUE);
-        
-        body.getChildren().addAll(path, dashLine);
-        
         blur.setIterations(3);
         body.setEffect(blur);
-        body.opacityProperty().bind(opacity);
+        
+        body.getChildren().addAll(path, dashLine);
         
         dash.addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
             if (dashLine != null) {
@@ -99,20 +97,23 @@ public class GraphEdge {
         path.getElements().clear();
         
         if (direction == DIRECTION_NONE) {
-            path.strokeWidthProperty().bind(width);
             path.getElements().add(new MoveTo(sourcePos.getX(), sourcePos.getY()));
             path.getElements().add(new LineTo(targetPos.getX(), targetPos.getY()));
         } else {
             switch (edgeType) {
                 case TYPE_ARROWED:
-                    path.strokeWidthProperty().bind(width);
                     createArrow(sourcePos, targetPos);
                     break;
                 case TYPE_TAPERED:
-                    path.strokeWidthProperty().unbind();
                     createTapered(sourcePos, targetPos);
             }
         }
+        
+        double x = Math.min(targetPos.getX(), sourcePos.getX()) + Math.abs((targetPos.getX() - sourcePos.getX()) / 2);
+        double y = Math.min(targetPos.getY(), sourcePos.getY()) + Math.abs((targetPos.getY() - sourcePos.getY()) / 2);
+        
+        label.setTranslateX( x );
+        label.setTranslateY( y );
         
         dashLine.setStartX(sourcePos.getX());
         dashLine.setStartY(sourcePos.getY());
@@ -164,30 +165,39 @@ public class GraphEdge {
         path.getElements().add(new ClosePath());
     }
     
-    public ColorAdjust getColorAdjust () {
-        return colorAdjust;
+    public Label getLabelNode () {
+        return label;
     }
     
-    public BoxBlur getBlur () {
-        return blur;
+    public void setLabel (String l) {
+        label.setText(l);
+    }
+    
+    public void setWidth (double w) {
+        path.setStrokeWidth(w);
+    }
+    
+    public void setHue (double h) {
+        colorAdjust.setHue(h);
+    }
+    
+    public void setOpacity (double o) {
+        path.setOpacity(o);
+    }
+    
+    public void setFuzziness (double f) {
+        blur.setHeight(f);
+        blur.setWidth(f);
+    }
+    
+    public void setBrightness (double b) {
+        colorAdjust.setBrightness(b);
     }
     
     public ObjectProperty getColorProperty () {
         return color;
     }
     
-    public DoubleProperty getWidthProperty () {
-        return width;
-    }
-    
-    public DoubleProperty getOpacityProperty () {
-        return opacity;
-    }
-    
-    public DoubleProperty getDashProperty () {
-        return dash;
-    }
-
     /**
      * @return the source
      */

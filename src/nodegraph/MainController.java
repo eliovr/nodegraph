@@ -13,6 +13,7 @@ import java.util.ResourceBundle;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -92,10 +93,6 @@ public class MainController implements Initializable {
     
     ArrayList<GraphEdge> edges;
     
-    private double area;
-    private double gravity;
-    private double speed;
-    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         resources = rb;
@@ -125,10 +122,6 @@ public class MainController implements Initializable {
                 }
             }
         });
-        
-        speed = 1;
-        area = 10000;
-        gravity = 10;
     }
     
     @FXML
@@ -136,11 +129,41 @@ public class MainController implements Initializable {
         rootGroup.getChildren().clear();
         nodes = new ArrayList<>();
         edges = new ArrayList<>();
+        HashMap<String, String> attributes;
         
         if (!textAreaNodes.getText().trim().isEmpty()) {
-            String[] nodePairs = textAreaNodes.getText().replace(" ", "").split(",");
+            String[] nodePairs = textAreaNodes.getText().trim().split(",");
             
-            for (String pair : nodePairs) {
+            for (String nodePair : nodePairs) {
+                String [] pairAndAttributes = nodePair.trim().split(" ");
+                String pair = pairAndAttributes[0];
+//                String [] pairAndAttributes = nodePair.split("\\|");
+//                String pair = pairAndAttributes[0].replace(" ", "");
+                attributes = new HashMap();
+                
+                // Retrieve attributes if any...
+                if (pairAndAttributes.length > 1) {
+                    for (int i = 1; i < pairAndAttributes.length; i++) {
+                        String attr = pairAndAttributes[i];
+                        String[] nameValue = attr.split("=");
+                        attributes.put(nameValue[0].trim(), nameValue[1].trim());
+                    }
+                    
+//                    String attrs = pairAndAttributes[1];
+//                    for (String attr : attrs.trim().split(" ")) {
+//                        String[] nameValue = attr.split("=");
+//                        attributes.put(nameValue[0].trim(), nameValue[1].trim());
+//                    }
+                }
+                
+                // Default attributes...
+                String label = attributes.getOrDefault("l", "");
+                double width = Double.parseDouble(attributes.getOrDefault("w", "1.0"));
+                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
+                double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
+                double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
+                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
+                
                 String[] nodesArr = null;
                 byte direction = 0;
                 
@@ -163,102 +186,125 @@ public class MainController implements Initializable {
                     byte edgeType = (byte)edgeTypes.getSelectionModel().getSelectedIndex();
                     
                     GraphEdge edge = new GraphEdge(fromNode, toNode, edgeType, direction);
-                    edge.getWidthProperty().bind(edgeWidth.valueProperty());
+                    edge.setLabel(label);
+                    edge.setWidth(width);
+                    edge.setHue(hue);
+                    edge.setOpacity(opacity);
+                    edge.setFuzziness(fuzziness);
+                    edge.setBrightness(brightness);
                     edge.getColorProperty().bind(edgeColor.valueProperty());
-                    edge.getOpacityProperty().bind(edgeOpacity.valueProperty());
-                    edge.getBlur().heightProperty().bind(edgeFuzziness.valueProperty());
-                    edge.getBlur().widthProperty().bind(edgeFuzziness.valueProperty());
-                    edge.getColorAdjust().hueProperty().bind(edgeHue.valueProperty());
-                    edge.getColorAdjust().brightnessProperty().bind(edgeBrightness.valueProperty());
-                    edge.getDashProperty().bind(edgeDash.valueProperty());
                     
                     edges.add(edge);
                     rootGroup.getChildren().add(0, edge.getBody());
+                    rootGroup.getChildren().add(edge.getLabelNode());
                 }
             }
         }
         
-        fruchtermanReingold();
+//        new Thread(new FruchtermanReingold()).start();
+        double area = canvas.getWidth() * canvas.getHeight() * 2;
+        double k = Math.sqrt(area / nodes.size());
+        double temperature = canvas.getWidth() / 10;
+        double speed = 1;
+        
+        for (int i = 0; i < 100; i++) {
+            fruchtermanReingold(area, k, temperature, speed);
+            temperature *= (1.0 - i / (double) 100);
+        }
+        
         for (GraphEdge edge : edges)
             edge.update();
     }
     
-    void fruchtermanReingold () {
-        double maxDisplace = (Math.sqrt(AREA_MULTIPLICATOR * area) / 10);
-        double k = Math.sqrt((AREA_MULTIPLICATOR * area) / (1 + nodes.size()));
+    /**
+     * Animated version of the algorithm.
+     */
+    private class FruchtermanReingold extends Task<Object> {
+
+        @Override
+        protected Object call() throws Exception {
+            double area = canvas.getWidth() * canvas.getHeight();
+            double k = Math.sqrt(area / nodes.size());
+            double temperature = canvas.getWidth() / 10;
+            double speed = 1;
+            
+            for (int i = 0; i < 100; i++) {
+                fruchtermanReingold(area, k, temperature, speed);
+                // Cooling...
+                temperature *= (1.0 - i / (double) 100);
+                // Update edges...
+                for (GraphEdge edge : edges)
+                    edge.update();
+                
+                Thread.sleep(100);
+            }
+            
+            return null;
+        }
         
-        for (int i = 0; i < 200; i++) {
-            for (GraphNode n1 : nodes) {
-                for (GraphNode n2 : nodes) {
-                    if (n1.getId() != n2.getId()) {
-                        Point2D posn1 = n1.getPosition();
-                        Point2D posn2 = n2.getPosition();
-                        
-                        double xDist = posn1.getX() - posn2.getX();
-                        double yDist = posn1.getY() - posn2.getY();
-                        double dist = Math.sqrt(xDist * xDist + yDist * yDist);
-                        
-                        if (dist > 0) {
-                            double repulsiveF = k * k / dist;
-                            ForceLayoutData layoutData = n1.getLayoutData();
-                            layoutData.dx += xDist / dist * repulsiveF;
-                            layoutData.dy += yDist / dist * repulsiveF;
-                        }
+    }
+    
+    void fruchtermanReingold (double area, double k, double temp, double speed) {
+        double force;
+        
+        // Calculate repulsive forces...
+        for (GraphNode n1 : nodes) {
+            for (GraphNode n2 : nodes) {
+                if (n1.getId() != n2.getId()) {
+                    Point2D posn1 = n1.getPosition();
+                    Point2D posn2 = n2.getPosition();
+
+                    double xdiff = posn1.getX() - posn2.getX();
+                    double ydiff = posn1.getY() - posn2.getY();
+
+                    double dist = Math.sqrt(xdiff * xdiff + ydiff * ydiff);
+
+                    if (dist > 0) {
+                        force = k * k / dist;
+                        n1.dx += xdiff / dist * force;
+                        n1.dy += ydiff / dist * force;
                     }
                 }
             }
-            
-            for (GraphEdge edge : edges) {
-                GraphNode nf = edge.getSource();
-                GraphNode nt = edge.getTarget();
-                Point2D posnf = nf.getPosition();
-                Point2D posnt = nt.getPosition();
+        }
 
-                double xDist = posnf.getX() - posnt.getX();
-                double yDist = posnf.getY() - posnt.getY();
-                double dist = Math.sqrt(xDist * xDist + yDist * yDist);
+        // Calculate attractive forces...
+        for (GraphEdge edge : edges) {
+            GraphNode sNode = edge.getSource();
+            GraphNode tNode = edge.getTarget();
+            Point2D sPos = sNode.getPosition();
+            Point2D tPos = tNode.getPosition();
 
-                double attractiveF = dist * dist / k;
-                
-                if (dist > 0) {
-                    ForceLayoutData sourceLayoutData = nf.getLayoutData();
-                    ForceLayoutData targetLayoutData = nt.getLayoutData();
-                    sourceLayoutData.dx -= xDist / dist * attractiveF;
-                    sourceLayoutData.dy -= yDist / dist * attractiveF;
-                    targetLayoutData.dx += xDist / dist * attractiveF;
-                    targetLayoutData.dy += yDist / dist * attractiveF;
-                }
+            double xdiff = sPos.getX() - tPos.getX();
+            double ydiff = sPos.getY() - tPos.getY();
+            double dist = Math.sqrt(xdiff * xdiff + ydiff * ydiff);
+
+            force = dist * dist / k;
+
+            if (dist > 0) {
+                sNode.dx -= xdiff / dist * force;
+                sNode.dy -= ydiff / dist * force;
+                tNode.dx += xdiff / dist * force;
+                tNode.dy += ydiff / dist * force;
             }
-            
-            for (GraphNode n : nodes) {
-                ForceLayoutData layoutData = n.getLayoutData();
-                Point2D pos = n.getPosition();
-                
-                double d = Math.sqrt(pos.getX() * pos.getX() + pos.getY() * pos.getY());
-                double gf = 0.01 * k * gravity * d;
-                layoutData.dx -= gf * pos.getX() / d;
-                layoutData.dy -= gf * pos.getY() / d;
-            }
-            
-            for (GraphNode n : nodes) {
-                ForceLayoutData layoutData = n.getLayoutData();
-                layoutData.dx *= speed / SPEED_DIVISOR;
-                layoutData.dy *= speed / SPEED_DIVISOR;
-            }
-            
-            for (GraphNode n : nodes) {
-                Point2D pos = n.getPosition();
-                ForceLayoutData layoutData = n.getLayoutData();
-                double xDist = layoutData.dx;
-                double yDist = layoutData.dy;
-                float dist = (float) Math.sqrt(layoutData.dx * layoutData.dx + layoutData.dy * layoutData.dy);
-//                if (dist > 0 && !n.isFixed()) {
-                if (dist > 0) {
-                    double limitedDist = Math.min(maxDisplace * (speed / SPEED_DIVISOR), dist);
-                    double x = pos.getX() + xDist / dist * limitedDist;
-                    double y = pos.getY() + yDist / dist * limitedDist;
-                    n.setPosition(x, y);
-                }
+        }
+        
+        for (GraphNode n : nodes) {
+            n.dx *= speed / SPEED_DIVISOR;
+            n.dy *= speed / SPEED_DIVISOR;
+        }
+
+        for (GraphNode n : nodes) {
+            Point2D pos = n.getPosition();
+
+            double deltaLength = Math.sqrt(n.dx * n.dx + n.dy * n.dy);
+
+            if (deltaLength > 0) {
+                double min = Math.min(deltaLength, temp);
+                double x = pos.getX() + (n.dx / deltaLength) * min;
+                double y = pos.getY() + (n.dy / deltaLength) * min;
+
+                n.setPosition(x, y);
             }
         }
     }

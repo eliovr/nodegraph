@@ -25,14 +25,18 @@ public class GraphNode {
     private Circle circle;
     private Label label;
     private ArrayList<GraphEdge> edges;
-    private ForceLayoutData layoutData;
+    
+    // Auxiliar variables for fruchtermanReingold algorithm...
+    public double dx;
+    public double dy;
     
     public GraphNode (int id, String name) {
         this.id = id;
         this.name = name;
+        dx = 0.0;
+        dy = 0.0;
         
         edges = new ArrayList<>();
-        layoutData = new ForceLayoutData();
         
         circle = new Circle(RADIUS);
         circle.setFill(Color.WHITE);
@@ -111,20 +115,4 @@ public class GraphNode {
     public void setEdges(ArrayList<GraphEdge> edges) {
         this.edges = edges;
     }
-
-    /**
-     * @return the layoutData
-     */
-    public ForceLayoutData getLayoutData() {
-        return layoutData;
-    }
-
-    /**
-     * @param layoutData the layoutData to set
-     */
-    public void setLayoutData(ForceLayoutData layoutData) {
-        this.layoutData = layoutData;
-    }
-    
-    
 }
