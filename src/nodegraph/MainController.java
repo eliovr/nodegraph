@@ -19,6 +19,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
@@ -40,46 +42,22 @@ public class MainController implements Initializable {
     private AnchorPane canvas;
 
     @FXML
-    private Slider edgeWidth;
-    
-    @FXML
-    private Slider edgeHue;
-
-    @FXML
-    private Slider edgeFuzziness;
-    
-    @FXML
     private ChoiceBox<String> edgeTypes;
-    
-    @FXML
-    private Slider edgeBrightness;
-
-    @FXML
-    private Slider edgeOpacity;
     
     @FXML
     private Slider edgeDash;
 
     @FXML
-    private Label labelOpacity;
-
-    @FXML
-    private Label labelWidth;
-
-    @FXML
-    private Label labelFuzziness;
-
-    @FXML
-    private Label labelBrightness;
-
-    @FXML
-    private Label labelHue;
-    
-    @FXML
     private Label labelDash;
 
     @FXML
     private TextArea textAreaNodes;
+    
+    @FXML
+    private Button buttonPlace;
+    
+    @FXML
+    private CheckBox animate;
     
     @FXML // ResourceBundle that was given to the FXMLLoader
     private ResourceBundle resources;
@@ -96,17 +74,9 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         resources = rb;
-        
         edgeTypes.setItems(FXCollections.observableArrayList(GraphEdge.TYPES));
         edgeTypes.getSelectionModel().selectFirst();
-        
         edgeColor.setValue(Color.BLACK);
-        
-        labelWidth.textProperty().bind(edgeWidth.valueProperty().asString());
-        labelBrightness.textProperty().bind(edgeBrightness.valueProperty().asString());
-        labelFuzziness.textProperty().bind(edgeFuzziness.valueProperty().asString());
-        labelHue.textProperty().bind(edgeHue.valueProperty().asString());
-        labelOpacity.textProperty().bind(edgeOpacity.valueProperty().asString());
         labelDash.textProperty().bind(edgeDash.valueProperty().asString());
         rootGroup = new Group();
         canvas.getChildren().add(rootGroup);
@@ -131,14 +101,14 @@ public class MainController implements Initializable {
         edges = new ArrayList<>();
         HashMap<String, String> attributes;
         
+        // Parse user input...
         if (!textAreaNodes.getText().trim().isEmpty()) {
-            String[] nodePairs = textAreaNodes.getText().trim().split(",");
+            // Get every line in an array...
+            String[] lines = textAreaNodes.getText().trim().split("\n");
             
-            for (String nodePair : nodePairs) {
-                String [] pairAndAttributes = nodePair.trim().split(" ");
-                String pair = pairAndAttributes[0];
-//                String [] pairAndAttributes = nodePair.split("\\|");
-//                String pair = pairAndAttributes[0].replace(" ", "");
+            for (String line : lines) {
+                String [] pairAndAttributes = line.trim().split(" ");
+                String nodePair = pairAndAttributes[0];
                 attributes = new HashMap();
                 
                 // Retrieve attributes if any...
@@ -148,16 +118,13 @@ public class MainController implements Initializable {
                         String[] nameValue = attr.split("=");
                         attributes.put(nameValue[0].trim(), nameValue[1].trim());
                     }
-                    
-//                    String attrs = pairAndAttributes[1];
-//                    for (String attr : attrs.trim().split(" ")) {
-//                        String[] nameValue = attr.split("=");
-//                        attributes.put(nameValue[0].trim(), nameValue[1].trim());
-//                    }
                 }
                 
                 // Default attributes...
                 String label = attributes.getOrDefault("l", "");
+                String str = attributes.getOrDefault("str", null);    // strength
+                String sig = attributes.getOrDefault("sig", null);    // significance
+                
                 double width = Double.parseDouble(attributes.getOrDefault("w", "1.0"));
                 double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
@@ -165,55 +132,67 @@ public class MainController implements Initializable {
                 double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
                 
                 String[] nodesArr = null;
-                byte direction = 0;
+                byte direction;
                 
-                if (pair.contains("-")) {
-                    nodesArr = pair.split("-");
+                if (nodePair.contains("-")) {
+                    nodesArr = nodePair.split("-");
                     direction = GraphEdge.DIRECTION_NONE;
-                } else if (pair.contains(">")) {
-                    nodesArr = pair.split(">");
+                } 
+                else if (nodePair.contains(">")) {
+                    nodesArr = nodePair.split(">");
                     direction = GraphEdge.DIRECTION_ONEWAY;
-                } else  if (pair.contains("<>")) {
-                    nodesArr = pair.split("<>");
+                } 
+                else  if (nodePair.contains("<>")) {
+                    nodesArr = nodePair.split("<>");
                     direction = GraphEdge.DIRECTION_BOTHWAYS;
+                } 
+                else { // is a single node...
+                    getOrCreate(nodePair);
+                    continue;
                 }
                 
-                if (nodesArr.length == 1) {
-                    createOrGetNode(nodesArr[0]);
-                } else if (nodesArr.length == 2) {
-                    GraphNode fromNode = createOrGetNode(nodesArr[0]);
-                    GraphNode toNode = createOrGetNode(nodesArr[1]);
-                    byte edgeType = (byte)edgeTypes.getSelectionModel().getSelectedIndex();
-                    
-                    GraphEdge edge = new GraphEdge(fromNode, toNode, edgeType, direction);
-                    edge.setLabel(label);
-                    edge.setWidth(width);
-                    edge.setHue(hue);
-                    edge.setOpacity(opacity);
-                    edge.setFuzziness(fuzziness);
-                    edge.setBrightness(brightness);
-                    edge.getColorProperty().bind(edgeColor.valueProperty());
-                    
-                    edges.add(edge);
-                    rootGroup.getChildren().add(0, edge.getBody());
-                    rootGroup.getChildren().add(edge.getLabelNode());
-                }
+                GraphNode fromNode = getOrCreate(nodesArr[0]);
+                GraphNode toNode = getOrCreate(nodesArr[1]);
+                byte edgeType = (byte)edgeTypes.getSelectionModel().getSelectedIndex();
+
+                GraphEdge edge = new GraphEdge(fromNode, toNode, edgeType, direction);
+//                edge.setLabel(label);
+                edge.setWidth(width);
+                edge.setHue(hue);
+                edge.setOpacity(opacity);
+                edge.setFuzziness(fuzziness);
+                edge.setBrightness(brightness);
+                edge.getColorProperty().bind(edgeColor.valueProperty());
+                
+                if (sig != null) edge.setLabel1("sig: " + sig);
+                if (str != null) edge.setLabel2("str: " + str);
+
+                edges.add(edge);
+                rootGroup.getChildren().add(0, edge.getBody());
+                rootGroup.getChildren().add(edge.getLabel1Node());
+                rootGroup.getChildren().add(edge.getLabel2Node());
+//                rootGroup.getChildren().add(edge.getLabelNode());
             }
         }
         
-//        new Thread(new FruchtermanReingold()).start();
         double area = canvas.getWidth() * canvas.getHeight() * 2;
         double k = Math.sqrt(area / nodes.size());
         double temperature = canvas.getWidth() / 10;
         double speed = 1;
         
-        for (int i = 0; i < 100; i++) {
-            fruchtermanReingold(area, k, temperature, speed);
-            temperature *= (1.0 - i / (double) 100);
+        if (animate.isSelected())
+            new Thread(
+                    new FruchtermanReingold(area, k, temperature, speed)
+            ).start();
+        else {
+            for (int i = 0; i < 100; i++) {
+                fruchtermanReingold(area, k, temperature, speed);
+                temperature *= (1.0 - i / (double) 10000);
+            }
+
+            for (GraphEdge edge : edges)
+                edge.update();
         }
-        
-        for (GraphEdge edge : edges)
-            edge.update();
     }
     
     /**
@@ -221,28 +200,40 @@ public class MainController implements Initializable {
      */
     private class FruchtermanReingold extends Task<Object> {
 
+        double area;
+        double k;
+        double temperature;
+        double speed;
+        
+        public FruchtermanReingold (double area, double k, double temperature, double speed) {
+            this.area = area;
+            this.k = k;
+            this.temperature = temperature;
+            this.speed = speed;
+        }
+        
         @Override
         protected Object call() throws Exception {
-            double area = canvas.getWidth() * canvas.getHeight();
-            double k = Math.sqrt(area / nodes.size());
-            double temperature = canvas.getWidth() / 10;
-            double speed = 1;
+            buttonPlace.setDisable(true);
             
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 150; i++) {
                 fruchtermanReingold(area, k, temperature, speed);
                 // Cooling...
-                temperature *= (1.0 - i / (double) 100);
+                temperature *= (1.0 - i / 10000);
                 // Update edges...
                 for (GraphEdge edge : edges)
                     edge.update();
                 
-                Thread.sleep(100);
+                Thread.sleep(30);
             }
+            
+            buttonPlace.setDisable(false);
             
             return null;
         }
         
     }
+    
     
     void fruchtermanReingold (double area, double k, double temp, double speed) {
         double force;
@@ -282,10 +273,10 @@ public class MainController implements Initializable {
             force = dist * dist / k;
 
             if (dist > 0) {
-                sNode.dx -= xdiff / dist * force;
-                sNode.dy -= ydiff / dist * force;
-                tNode.dx += xdiff / dist * force;
-                tNode.dy += ydiff / dist * force;
+                sNode.dx -= (xdiff / dist) * force;
+                sNode.dy -= (ydiff / dist) * force;
+                tNode.dx += (xdiff / dist) * force;
+                tNode.dy += (ydiff / dist) * force;
             }
         }
         
@@ -309,7 +300,13 @@ public class MainController implements Initializable {
         }
     }
     
-    private GraphNode createOrGetNode (String nodeLabel) {
+    
+    /**
+     * Get or create node with the given label.
+     * @param nodeLabel Node label id which is unique for every node.
+     * @return The existing or newly created node.
+     */
+    private GraphNode getOrCreate (String nodeLabel) {
         GraphNode node = null;
         
         for (GraphNode n : nodes)
@@ -321,12 +318,15 @@ public class MainController implements Initializable {
             nodes.add(node);
             rootGroup.getChildren().add(node.getBody());
             
-            node.getBody().setTranslateX(randomBetween(400, 410));
-            node.getBody().setTranslateY(randomBetween(400, 410));
+            node.getBody().setTranslateX(randomBetween(200, 600));
+            node.getBody().setTranslateY(randomBetween(200, 400));
+//            node.getBody().setTranslateX(randomBetween(400, 410));
+//            node.getBody().setTranslateY(randomBetween(400, 410));
         }
             
         return node;
     }
+    
     
     public int nodeIndex (String nodeLabel) {
         for (GraphNode n : nodes) {

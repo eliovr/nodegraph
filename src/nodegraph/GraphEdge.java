@@ -9,7 +9,6 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
@@ -22,7 +21,6 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
-import javafx.scene.shape.StrokeType;
 
 /**
  *
@@ -43,16 +41,18 @@ public class GraphEdge {
     private GraphNode target;
     private byte direction;
     private byte edgeType;
+    private double width;
     
-    private Group body;
-    private Path path;
+    private final Group body;
+    private final Path path;
+    private final Label label1;
+    private final Label label2;
     private Line dashLine;
-    private Label label;
     
-    private ObjectProperty<Color> color = new SimpleObjectProperty();
-    private DoubleProperty dash = new SimpleDoubleProperty();
-    private ColorAdjust colorAdjust;
-    private BoxBlur blur;
+    private final ObjectProperty<Color> color = new SimpleObjectProperty();
+    private final DoubleProperty dash = new SimpleDoubleProperty();
+    private final ColorAdjust colorAdjust;
+    private final BoxBlur blur;
     
     public GraphEdge (GraphNode fromNode, GraphNode toNode, byte edgeType, byte direction) {
         this.source = fromNode;
@@ -60,12 +60,19 @@ public class GraphEdge {
         this.edgeType = edgeType;
         this.direction = direction;
         
+        width = 1.0;
         body = new Group();
         path = new Path();
-        label = new Label();
+        label1 = new Label();
+        label2 = new Label();
         colorAdjust = new ColorAdjust();
         blur = new BoxBlur();
         dashLine = new Line();
+        
+        label1.setScaleX(1.2);
+        label1.setScaleY(1.2);
+        label2.setScaleX(1.2);
+        label2.setScaleY(1.2);
         
         path.strokeProperty().bind(color);
         path.fillProperty().bind(color);
@@ -109,11 +116,12 @@ public class GraphEdge {
             }
         }
         
-        double x = Math.min(targetPos.getX(), sourcePos.getX()) + Math.abs((targetPos.getX() - sourcePos.getX()) / 2);
-        double y = Math.min(targetPos.getY(), sourcePos.getY()) + Math.abs((targetPos.getY() - sourcePos.getY()) / 2);
-        
-        label.setTranslateX( x );
-        label.setTranslateY( y );
+        placeLabels(sourcePos, targetPos);
+//        double x = Math.min(targetPos.getX(), sourcePos.getX()) + Math.abs((targetPos.getX() - sourcePos.getX()) / 2);
+//        double y = Math.min(targetPos.getY(), sourcePos.getY()) + Math.abs((targetPos.getY() - sourcePos.getY()) / 2);
+//        
+//        label1.setTranslateX( x );
+//        label1.setTranslateY( y );
         
         dashLine.setStartX(sourcePos.getX());
         dashLine.setStartY(sourcePos.getY());
@@ -150,7 +158,7 @@ public class GraphEdge {
     private void createTapered (Point2D sourcePos, Point2D targetPos) {
         Point2D other = new Point2D(targetPos.getX() + 10, targetPos.getY());
 
-        double radius = GraphNode.RADIUS * 1.8 / Math.PI;
+        double radius = GraphNode.RADIUS * width / Math.PI;
         double angle = targetPos.angle(sourcePos, other) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
 
@@ -165,16 +173,51 @@ public class GraphEdge {
         path.getElements().add(new ClosePath());
     }
     
-    public Label getLabelNode () {
-        return label;
+    private void placeLabels (Point2D sourcePos, Point2D targetPos) {
+        double middleX = Math.min(targetPos.getX(), sourcePos.getX()) + Math.abs((targetPos.getX() - sourcePos.getX()) / 2);
+        double middleY = Math.min(targetPos.getY(), sourcePos.getY()) + Math.abs((targetPos.getY() - sourcePos.getY()) / 2);
+        
+        Point2D other = new Point2D(targetPos.getX() + 10, targetPos.getY());
+
+        double radius = GraphNode.RADIUS * 3 / Math.PI;
+        double angle = targetPos.angle(new Point2D(middleX, middleY), other) * Math.PI / 180;
+        angle = targetPos.getY() <= middleY ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
+
+        double x = middleX + radius * Math.cos((Math.PI) + angle);
+        double y = middleY + radius * Math.sin((Math.PI) + angle);
+        
+        label1.setTranslateX(x - (label1.getText().length() * 4));
+        label1.setTranslateY(y - 4);
+
+        x = middleX + radius * Math.cos((Math.PI*2) + angle);
+        y = middleY + radius * Math.sin((Math.PI*2) + angle);
+        
+        label2.setTranslateX(x - (label2.getText().length() * 4));
+        label2.setTranslateY(y - 4);
     }
     
-    public void setLabel (String l) {
-        label.setText(l);
+    public Label getLabel1Node () {
+        return label1;
+    }
+    
+    public void setLabel1 (String l) {
+        label1.setText(l);
+    }
+    
+    public Label getLabel2Node () {
+        return label2;
+    }
+    
+    public void setLabel2 (String l) {
+        label2.setText(l);
     }
     
     public void setWidth (double w) {
-        path.setStrokeWidth(w);
+        width = w <= 3 ? w : 3;
+        
+        // the width of tapered edges is set in the createTapered method...
+        if (edgeType != TYPE_TAPERED)
+            path.setStrokeWidth(w);
     }
     
     public void setHue (double h) {

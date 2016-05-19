@@ -47,6 +47,8 @@ public class GraphNode {
 //        label.setTextFill(Color.WHITE);
         label.setTranslateX(-name.length()*4);
         label.setTranslateY(-7);
+        label.setScaleX(1.2);
+        label.setScaleY(1.2);
         
         body = new Group(circle, label);
     }
