@@ -6,9 +6,11 @@
 package nodegraph;
 
 import java.util.ArrayList;
+import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 
@@ -17,14 +19,16 @@ import javafx.scene.shape.Circle;
  * @author elio
  */
 public class GraphNode {
-    public static final double RADIUS = 15;
+    public static final double RADIUS = 20;
+    private static final double X_OFFSET = 200;
     
     private int id;
     private String name;
     private Group body;
-    private Circle circle;
-    private Label label;
-    private ArrayList<GraphEdge> edges;
+    private final Circle circle;
+    private final Label label;
+    private ArrayList<GraphEdge> inboundEdges;
+    private ArrayList<GraphEdge> outboundEdges;
     
     // Auxiliar variables for fruchtermanReingold algorithm...
     public double dx;
@@ -36,7 +40,8 @@ public class GraphNode {
         dx = 0.0;
         dy = 0.0;
         
-        edges = new ArrayList<>();
+        inboundEdges = new ArrayList<>();
+        outboundEdges = new ArrayList<>();
         
         circle = new Circle(RADIUS);
         circle.setFill(Color.WHITE);
@@ -47,13 +52,28 @@ public class GraphNode {
 //        label.setTextFill(Color.WHITE);
         label.setTranslateX(-name.length()*4);
         label.setTranslateY(-7);
-        label.setScaleX(1.2);
-        label.setScaleY(1.2);
+        label.setScaleX(1.4);
+        label.setScaleY(1.4);
         
         body = new Group(circle, label);
+        
+        body.setOnMouseDragged(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                body.setTranslateX(event.getSceneX() - X_OFFSET);
+                body.setTranslateY(event.getSceneY());
+                
+                for (GraphEdge e : inboundEdges)
+                    e.update();
+                for (GraphEdge e : outboundEdges)
+                    e.update();
+            }
+        });
     }
     
     public void setPosition (double x, double y) {
+        dx = x;
+        dy = y;
         body.setTranslateX(x);
         body.setTranslateY(y);
     }
@@ -105,16 +125,30 @@ public class GraphNode {
     }
 
     /**
-     * @return the edges
+     * @return the inboundEdges
      */
-    public ArrayList<GraphEdge> getEdges() {
-        return edges;
+    public ArrayList<GraphEdge> getInboundEdges() {
+        return inboundEdges;
     }
 
     /**
-     * @param edges the edges to set
+     * @param edges the inboundEdges to set
      */
-    public void setEdges(ArrayList<GraphEdge> edges) {
-        this.edges = edges;
+    public void setInboundEdges(ArrayList<GraphEdge> edges) {
+        this.inboundEdges = edges;
+    }
+
+    /**
+     * @return the outboundEdges
+     */
+    public ArrayList<GraphEdge> getOutboundEdges() {
+        return outboundEdges;
+    }
+
+    /**
+     * @param outboundEdges the outboundEdges to set
+     */
+    public void setOutboundEdges(ArrayList<GraphEdge> outboundEdges) {
+        this.outboundEdges = outboundEdges;
     }
 }

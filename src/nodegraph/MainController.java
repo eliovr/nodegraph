@@ -7,6 +7,7 @@ package nodegraph;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.ResourceBundle;
@@ -14,7 +15,9 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
+import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
@@ -35,8 +38,7 @@ import javafx.scene.paint.Color;
  */
 public class MainController implements Initializable {
     
-    private static final float SPEED_DIVISOR = 800;
-    private static final float AREA_MULTIPLICATOR = 10000;
+    private static final float SPEED_DIVISOR = 1200;
     
     @FXML
     private AnchorPane canvas;
@@ -45,10 +47,8 @@ public class MainController implements Initializable {
     private ChoiceBox<String> edgeTypes;
     
     @FXML
-    private Slider edgeDash;
-
-    @FXML
-    private Label labelDash;
+    private ColorPicker edgeColor;
+    
 
     @FXML
     private TextArea textAreaNodes;
@@ -62,9 +62,9 @@ public class MainController implements Initializable {
     @FXML // ResourceBundle that was given to the FXMLLoader
     private ResourceBundle resources;
     
-    @FXML
-    private ColorPicker edgeColor;
+    private FruchtermanReingold frAlgorithm;
     
+    // parent group where all nodes, edges and labeles should be.
     private Group rootGroup;
     
     ArrayList<GraphNode> nodes;
@@ -77,9 +77,9 @@ public class MainController implements Initializable {
         edgeTypes.setItems(FXCollections.observableArrayList(GraphEdge.TYPES));
         edgeTypes.getSelectionModel().selectFirst();
         edgeColor.setValue(Color.BLACK);
-        labelDash.textProperty().bind(edgeDash.valueProperty().asString());
         rootGroup = new Group();
         canvas.getChildren().add(rootGroup);
+        frAlgorithm = null;
         
         edgeTypes.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
             @Override
@@ -125,13 +125,18 @@ public class MainController implements Initializable {
                 String str = attributes.getOrDefault("str", null);    // strength
                 String sig = attributes.getOrDefault("sig", null);    // significance
                 
-                double width = Double.parseDouble(attributes.getOrDefault("w", "1.0"));
-                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
+                double width = Double.parseDouble(attributes.getOrDefault("w", "0.2"));
+                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.5"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
-                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
+                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.5"));
                 
-                String[] nodesArr = null;
+                width = width * 3;
+                hue = hue < 0.5 ? -((0.5 - hue) * 2) : (hue - 0.5) * 2;
+                fuzziness = fuzziness * 20;
+                brightness = brightness < 0.5 ? -((0.5 - brightness) * 2) : (brightness - 0.5) * 2;
+                
+                String[] nodesArr;
                 byte direction;
                 
                 if (nodePair.contains("-")) {
@@ -156,6 +161,9 @@ public class MainController implements Initializable {
                 byte edgeType = (byte)edgeTypes.getSelectionModel().getSelectedIndex();
 
                 GraphEdge edge = new GraphEdge(fromNode, toNode, edgeType, direction);
+                fromNode.getOutboundEdges().add(edge);
+                toNode.getInboundEdges().add(edge);
+                
 //                edge.setLabel(label);
                 edge.setWidth(width);
                 edge.setHue(hue);
@@ -175,23 +183,36 @@ public class MainController implements Initializable {
             }
         }
         
-        double area = canvas.getWidth() * canvas.getHeight() * 2;
+        double minX = canvas.getWidth() / 2;
+        double minY = canvas.getHeight() / 3;
+        for (GraphNode node : nodes) {
+            node.getBody().setTranslateX(minX + randomBetween(-50, 50));
+            node.getBody().setTranslateY(minY + (node.getInboundEdges().size() * 25) + Math.random());
+        }
+        
+        double area = canvas.getWidth() * canvas.getHeight();
         double k = Math.sqrt(area / nodes.size());
         double temperature = canvas.getWidth() / 10;
         double speed = 1;
         
-        if (animate.isSelected())
-            new Thread(
-                    new FruchtermanReingold(area, k, temperature, speed)
-            ).start();
-        else {
-            for (int i = 0; i < 100; i++) {
+        if (animate.isSelected()) {
+            buttonPlace.setDisable(true);
+            frAlgorithm = new FruchtermanReingold(area, k, temperature, speed, animate.isSelected());
+            frAlgorithm.setOnSucceeded((WorkerStateEvent e) -> {
+                buttonPlace.setDisable(false);
+            });
+            
+            new Thread(frAlgorithm).start();
+        } else {
+            for (int i = 0; i < 150; i++) {
+                // run algorithm...
                 fruchtermanReingold(area, k, temperature, speed);
-                temperature *= (1.0 - i / (double) 10000);
+                // Cooling...
+                temperature *= (1.0 - i / 10000);
+                // Update edges...
+                for (GraphEdge edge : edges)
+                    edge.update();
             }
-
-            for (GraphEdge edge : edges)
-                edge.update();
         }
     }
     
@@ -204,34 +225,32 @@ public class MainController implements Initializable {
         double k;
         double temperature;
         double speed;
+        boolean animated;
         
-        public FruchtermanReingold (double area, double k, double temperature, double speed) {
+        public FruchtermanReingold (double area, double k, double temperature, double speed, boolean animated) {
             this.area = area;
             this.k = k;
             this.temperature = temperature;
             this.speed = speed;
+            this.animated = animated;
         }
         
         @Override
         protected Object call() throws Exception {
-            buttonPlace.setDisable(true);
-            
             for (int i = 0; i < 150; i++) {
+                // run algorithm...
                 fruchtermanReingold(area, k, temperature, speed);
                 // Cooling...
                 temperature *= (1.0 - i / 10000);
                 // Update edges...
                 for (GraphEdge edge : edges)
                     edge.update();
-                
+
                 Thread.sleep(30);
             }
             
-            buttonPlace.setDisable(false);
-            
             return null;
         }
-        
     }
     
     
@@ -318,8 +337,8 @@ public class MainController implements Initializable {
             nodes.add(node);
             rootGroup.getChildren().add(node.getBody());
             
-            node.getBody().setTranslateX(randomBetween(200, 600));
-            node.getBody().setTranslateY(randomBetween(200, 400));
+//            node.getBody().setTranslateX(randomBetween(250, 300));
+//            node.getBody().setTranslateY(randomBetween(250, 300));
 //            node.getBody().setTranslateX(randomBetween(400, 410));
 //            node.getBody().setTranslateY(randomBetween(400, 410));
         }

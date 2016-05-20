@@ -8,21 +8,21 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane id="AnchorPane" prefHeight="701.0" prefWidth="1086.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="nodegraph.MainController">
+<AnchorPane id="AnchorPane" prefHeight="580.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="nodegraph.MainController">
    <children>
       <GridPane layoutX="243.0" layoutY="148.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <columnConstraints>
-          <ColumnConstraints hgrow="SOMETIMES" maxWidth="437.0" minWidth="10.0" prefWidth="295.0" />
-          <ColumnConstraints hgrow="SOMETIMES" maxWidth="817.0" minWidth="10.0" prefWidth="817.0" />
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="200.0" minWidth="10.0" prefWidth="200.0" />
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="605.0" />
         </columnConstraints>
         <rowConstraints>
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
             <AnchorPane fx:id="canvas" prefHeight="200.0" prefWidth="200.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1" />
-            <VBox prefHeight="788.0" prefWidth="300.0" style="-fx-background-color: #F2F2F2;">
+            <VBox prefHeight="580.0" prefWidth="200.0" style="-fx-background-color: #F2F2F2;">
                <children>
-                  <TextArea fx:id="textAreaNodes" prefHeight="308.0" prefWidth="275.0" promptText="Nodes e.g. 1&gt;2">
+                  <TextArea fx:id="textAreaNodes" prefHeight="309.0" prefWidth="175.0" promptText="Nodes e.g. 1&gt;2">
                      <VBox.margin>
                         <Insets bottom="15.0" right="10.0" />
                      </VBox.margin>
@@ -35,7 +35,7 @@
                         <Insets bottom="15.0" />
                      </VBox.margin>
                   </CheckBox>
-                  <Button fx:id="buttonPlace" mnemonicParsing="false" onAction="#handlePlaceAction" prefHeight="87.0" prefWidth="273.0" text="%button.place">
+                  <Button fx:id="buttonPlace" mnemonicParsing="false" onAction="#handlePlaceAction" prefHeight="45.0" prefWidth="194.0" text="%button.place">
                      <VBox.margin>
                         <Insets bottom="15.0" right="10.0" />
                      </VBox.margin>
@@ -59,17 +59,6 @@
                         <Insets bottom="15.0" right="10.0" />
                      </VBox.margin>
                   </ColorPicker>
-                  <Label text="%label.dash" />
-                  <Slider fx:id="edgeDash">
-                     <VBox.margin>
-                        <Insets bottom="5.0" right="10.0" top="5.0" />
-                     </VBox.margin>
-                  </Slider>
-                  <Label fx:id="labelDash" text="0.0">
-                     <VBox.margin>
-                        <Insets bottom="15.0" />
-                     </VBox.margin>
-                  </Label>
                </children>
                <padding>
                   <Insets left="10.0" top="10.0" />
