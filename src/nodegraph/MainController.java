@@ -121,20 +121,21 @@ public class MainController implements Initializable {
                 }
                 
                 // Default attributes...
-                String label = attributes.getOrDefault("l", "");
+//                String label = attributes.getOrDefault("l", "");
                 String str = attributes.getOrDefault("str", null);    // strength
                 String sig = attributes.getOrDefault("sig", null);    // significance
                 
                 double width = Double.parseDouble(attributes.getOrDefault("w", "0.2"));
-                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.5"));
+                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
-                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.5"));
+                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
                 
+                // map normalized values...
                 width = width * 3;
-                hue = hue < 0.5 ? -((0.5 - hue) * 2) : (hue - 0.5) * 2;
+//                hue = hue < 0.5 ? -((0.5 - hue) * 2) : (hue - 0.5) * 2;
                 fuzziness = fuzziness * 20;
-                brightness = brightness < 0.5 ? -((0.5 - brightness) * 2) : (brightness - 0.5) * 2;
+//                brightness = brightness < 0.5 ? -((0.5 - brightness) * 2) : (brightness - 0.5) * 2;
                 
                 String[] nodesArr;
                 byte direction;
