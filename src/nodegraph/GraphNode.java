@@ -13,13 +13,16 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 
 /**
  *
  * @author elio
  */
 public class GraphNode {
-    public static final double RADIUS = 20;
+    public static final double RADIUS = 30;
     private static final double X_OFFSET = 200;
     
     private int id;
@@ -46,14 +49,10 @@ public class GraphNode {
         circle = new Circle(RADIUS);
         circle.setFill(Color.WHITE);
         circle.setStroke(Color.BLACK);
-//        circle.setFill(Color.web("#0489B1"));
-        
         label = new Label(name);
-//        label.setTextFill(Color.WHITE);
-        label.setTranslateX(-name.length()*4);
-        label.setTranslateY(-7);
-        label.setScaleX(1.4);
-        label.setScaleY(1.4);
+        label.setTranslateX(-name.length()*12);
+        label.setTranslateY(-22);
+        label.setFont(Font.font("Verdana", FontWeight.BOLD, 36));
         
         body = new Group(circle, label);
         
