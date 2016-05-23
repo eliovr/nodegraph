@@ -132,9 +132,12 @@ public class MainController implements Initializable {
                 double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
                 
                 // map normalized values...
-                width = width * 3;
+//                if (edgeTypes.getSelectionModel().getSelectedIndex() == GraphEdge.TYPE_TAPERED)
+//                    width = width * 3;
+//                else
+//                    width = width * 10;
 //                hue = hue < 0.5 ? -((0.5 - hue) * 2) : (hue - 0.5) * 2;
-                fuzziness = fuzziness * 20;
+//                fuzziness = fuzziness * 20;
 //                brightness = brightness < 0.5 ? -((0.5 - brightness) * 2) : (brightness - 0.5) * 2;
                 
                 String[] nodesArr;
@@ -165,22 +168,15 @@ public class MainController implements Initializable {
                 fromNode.getOutboundEdges().add(edge);
                 toNode.getInboundEdges().add(edge);
                 
-//                edge.setLabel(label);
                 edge.setWidth(width);
                 edge.setHue(hue);
                 edge.setOpacity(opacity);
                 edge.setFuzziness(fuzziness);
                 edge.setBrightness(brightness);
                 edge.getColorProperty().bind(edgeColor.valueProperty());
-                
-                if (sig != null) edge.setLabel1("sig: " + sig);
-                if (str != null) edge.setLabel2("str: " + str);
 
                 edges.add(edge);
                 rootGroup.getChildren().add(0, edge.getBody());
-                rootGroup.getChildren().add(edge.getLabel1Node());
-                rootGroup.getChildren().add(edge.getLabel2Node());
-//                rootGroup.getChildren().add(edge.getLabelNode());
             }
         }
         
