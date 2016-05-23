@@ -22,11 +22,11 @@ A w=0.5
 B-C h=0.3 b=0.7
 C>D w=0.8 o=0.2 f=0.2
 ```
-w: edge width.
-h: edge hue.
-b: edge brightness.
-o: edge opacity.
-f: edge fuzziness.
+* w: edge width.
+* h: edge hue.
+* b: edge brightness.
+* o: edge opacity.
+* f: edge fuzziness.
 
 All values go from 0.0 to 1.0. 
 
