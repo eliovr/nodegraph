@@ -7,7 +7,6 @@ package nodegraph;
 
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.ResourceBundle;
@@ -17,7 +16,6 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
@@ -26,8 +24,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ColorPicker;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
@@ -121,7 +117,6 @@ public class MainController implements Initializable {
                 }
                 
                 // Default attributes...
-//                String label = attributes.getOrDefault("l", "");
                 String str = attributes.getOrDefault("str", null);    // strength
                 String sig = attributes.getOrDefault("sig", null);    // significance
                 
@@ -130,15 +125,6 @@ public class MainController implements Initializable {
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
                 double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
-                
-                // map normalized values...
-//                if (edgeTypes.getSelectionModel().getSelectedIndex() == GraphEdge.TYPE_TAPERED)
-//                    width = width * 3;
-//                else
-//                    width = width * 10;
-//                hue = hue < 0.5 ? -((0.5 - hue) * 2) : (hue - 0.5) * 2;
-//                fuzziness = fuzziness * 20;
-//                brightness = brightness < 0.5 ? -((0.5 - brightness) * 2) : (brightness - 0.5) * 2;
                 
                 String[] nodesArr;
                 byte direction;
@@ -333,11 +319,6 @@ public class MainController implements Initializable {
             node = new GraphNode(nodes.size(), nodeLabel);
             nodes.add(node);
             rootGroup.getChildren().add(node.getBody());
-            
-//            node.getBody().setTranslateX(randomBetween(250, 300));
-//            node.getBody().setTranslateY(randomBetween(250, 300));
-//            node.getBody().setTranslateX(randomBetween(400, 410));
-//            node.getBody().setTranslateY(randomBetween(400, 410));
         }
             
         return node;
