@@ -13,6 +13,7 @@ import javafx.scene.effect.BoxBlur;
 import javafx.scene.effect.ColorAdjust;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.ClosePath;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
@@ -37,9 +38,11 @@ public class GraphEdge {
     private byte direction;
     private byte edgeType;
     private double width;
+    private double grain;
     
-    private final Group body;
+    private final Group bodyGroup;
     private final Path path;
+    private final Group grainGroup;
     
     private final ObjectProperty<Color> color = new SimpleObjectProperty();
     private final ColorAdjust colorAdjust;
@@ -52,8 +55,10 @@ public class GraphEdge {
         this.direction = direction;
         
         width = 1.0;
-        body = new Group();
+        grain = 0.0;
+        bodyGroup = new Group();
         path = new Path();
+        grainGroup = new Group();
         colorAdjust = new ColorAdjust();
         blur = new BoxBlur();
         
@@ -62,10 +67,9 @@ public class GraphEdge {
         path.setEffect(colorAdjust);
         
         blur.setIterations(3);
-        body.setEffect(blur);
+        bodyGroup.setEffect(blur);
         
-        body.getChildren().add(path);
-        
+        bodyGroup.getChildren().add(path);
     }
     
     public void update () {
@@ -111,6 +115,11 @@ public class GraphEdge {
         
         path.getElements().add(new LineTo(other.getX(), other.getY()));
         path.setStrokeWidth(width * 15);
+        
+        if (grain > 0) {
+            grainGroup.getChildren().clear();
+            createGrain(sourcePos, other);
+        }
     }
     
     private void createTapered (Point2D sourcePos, Point2D targetPos) {
@@ -130,6 +139,55 @@ public class GraphEdge {
         path.getElements().add(new LineTo(targetPos.getX(), targetPos.getY()));
         path.getElements().add(new ClosePath());
         path.setStrokeWidth(1.0);
+        
+        if (grain > 0) {
+            grainGroup.getChildren().clear();
+            createGrain(sourcePos, targetPos);
+        }
+    }
+    
+    private void createGrain (Point2D source, Point2D target) {
+        double radius = GraphNode.RADIUS * width / Math.PI;
+        if (edgeType == TYPE_TAPERED) radius *= 3;
+        double angle = target.angle(source, new Point2D(target.getX()+10, target.getY()));
+        angle *= Math.PI / 180;
+        angle = target.getY() <= source.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
+
+        double x = source.getX() + radius * Math.cos((Math.PI) + angle);
+        double y = source.getY() + radius * Math.sin((Math.PI) + angle);
+        Point2D sourceA = new Point2D(x, y);
+        
+        x = source.getX() + radius * Math.cos((Math.PI*2) + angle);
+        y = source.getY() + radius * Math.sin((Math.PI*2) + angle);
+        Point2D sourceB = new Point2D(x, y);
+        
+        while (sourceA.distance(target) > grain*3) {
+            Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
+            l.setStroke(Color.WHITE);
+            l.setStrokeWidth(grain);
+            grainGroup.getChildren().add(l);
+            
+            sourceA = newPointInLine(sourceA, target, grain*2, false);
+            sourceB = newPointInLine(sourceB, target, grain*2, false);
+        }
+    }
+    
+    /** Returns a new position based on the line drawn between p1 and p2.
+     * @param p1 is the moving point e.i. the one moving towards or away p2.
+     * @param p2 is the reference point e.i. the one from which p1 will move towards or away from.
+     * @param stepSize distance to move towards or away.
+     * @param getAway true if p1 is to move away from p2, false otherwise.
+     */
+    private Point2D newPointInLine(Point2D p1, Point2D p2, double stepSize, boolean getAway){
+        double dx = p2.getX() - p1.getX();
+        double dy = p2.getY() - p1.getY();
+        
+        double mag = Math.sqrt( Math.pow(dx, 2) + Math.pow(dy, 2));
+        
+        double x3 = getAway? p1.getX() - dx * stepSize / mag : p1.getX() + dx * stepSize / mag;
+        double y3 = getAway? p1.getY() - dy * stepSize / mag : p1.getY() + dy * stepSize / mag;
+        
+        return new Point2D(x3, y3);
     }
     
     
@@ -191,7 +249,11 @@ public class GraphEdge {
      * @return the path
      */
     public Group getBody() {
-        return body;
+        return bodyGroup;
+    }
+    
+    public Group getGrainGroup() {
+        return grainGroup;
     }
 
     /**
@@ -220,5 +282,19 @@ public class GraphEdge {
      */
     public void setDirection(byte direction) {
         this.direction = direction;
+    }
+
+    /**
+     * @return the grain
+     */
+    public double getGrain() {
+        return grain;
+    }
+
+    /**
+     * @param grain the grain to set
+     */
+    public void setGrain(double grain) {
+        this.grain = grain * 40;
     }
 }

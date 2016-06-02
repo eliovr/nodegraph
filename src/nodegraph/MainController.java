@@ -125,6 +125,7 @@ public class MainController implements Initializable {
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
                 double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
+                double grain = Double.parseDouble(attributes.getOrDefault("g", "0.0"));
                 
                 String[] nodesArr;
                 byte direction;
@@ -160,8 +161,10 @@ public class MainController implements Initializable {
                 edge.setFuzziness(fuzziness);
                 edge.setBrightness(brightness);
                 edge.getColorProperty().bind(edgeColor.valueProperty());
+                edge.setGrain(grain);
 
                 edges.add(edge);
+                rootGroup.getChildren().add(0, edge.getGrainGroup());
                 rootGroup.getChildren().add(0, edge.getBody());
             }
         }
