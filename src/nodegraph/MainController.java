@@ -164,7 +164,7 @@ public class MainController implements Initializable {
                 edge.setGrain(grain);
 
                 edges.add(edge);
-                rootGroup.getChildren().add(0, edge.getGrainGroup());
+//                rootGroup.getChildren().add(0, edge.getGrainGroup());
                 rootGroup.getChildren().add(0, edge.getBody());
             }
         }
@@ -195,10 +195,11 @@ public class MainController implements Initializable {
                 fruchtermanReingold(area, k, temperature, speed);
                 // Cooling...
                 temperature *= (1.0 - i / 10000);
-                // Update edges...
-                for (GraphEdge edge : edges)
-                    edge.update();
             }
+            
+            // Update edges...
+            for (GraphEdge edge : edges)
+                edge.update();
         }
     }
     
