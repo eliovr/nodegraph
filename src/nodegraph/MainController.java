@@ -117,15 +117,15 @@ public class MainController implements Initializable {
                 }
                 
                 // Default attributes...
-                String str = attributes.getOrDefault("str", null);    // strength
-                String sig = attributes.getOrDefault("sig", null);    // significance
+//                String str = attributes.getOrDefault("str", null);    // strength
+//                String sig = attributes.getOrDefault("sig", null);    // significance
                 
                 double width = Double.parseDouble(attributes.getOrDefault("w", "0.2"));
                 double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
-                double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "0.0"));
-                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.0"));
-                double grain = Double.parseDouble(attributes.getOrDefault("g", "0.0"));
+                double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "1.0"));
+                double brightness = Double.parseDouble(attributes.getOrDefault("b", "1.0"));
+                double grain = Double.parseDouble(attributes.getOrDefault("g", "1.0"));
                 
                 String[] nodesArr;
                 byte direction;
@@ -164,7 +164,6 @@ public class MainController implements Initializable {
                 edge.setGrain(grain);
 
                 edges.add(edge);
-//                rootGroup.getChildren().add(0, edge.getGrainGroup());
                 rootGroup.getChildren().add(0, edge.getBody());
             }
         }

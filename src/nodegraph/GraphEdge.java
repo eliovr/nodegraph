@@ -18,6 +18,9 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
+import javafx.scene.shape.StrokeType;
 
 /**
  *
@@ -66,6 +69,8 @@ public class GraphEdge {
         path.strokeProperty().bind(color);
         path.fillProperty().bind(color);
         path.setEffect(colorAdjust);
+        path.setStrokeLineJoin(StrokeLineJoin.MITER);
+        path.setStrokeLineCap(StrokeLineCap.ROUND);
         
         blur.setIterations(3);
         bodyGroup.setEffect(blur);
@@ -74,8 +79,11 @@ public class GraphEdge {
     }
     
     public void update () {
+        double targetOffSet = GraphNode.RADIUS;
+        if (edgeType == TYPE_ARROWED) targetOffSet += (width * 10);
+        
         Point2D sourcePos = source.getPosition();
-        Point2D targetPos = target.getPosition();
+        Point2D targetPos = newPointInLine(target.getPosition(), sourcePos, targetOffSet);
         path.getElements().clear();
         
         if (direction == DIRECTION_NONE) {
@@ -93,104 +101,111 @@ public class GraphEdge {
     }
     
     private void createArrow (Point2D sourcePos, Point2D targetPos) {
-        Point2D other = new Point2D(targetPos.getX() + 10, targetPos.getY());
-
-        double radius = GraphNode.RADIUS * 5 / Math.PI;
-        double openness = Math.PI / 20;
-        double angle = targetPos.angle(sourcePos, other) * Math.PI / 180;
+        Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
+        double strokeWidth = width * 15;
+        // Arrow radious...
+        double radius = GraphNode.RADIUS * 2 / Math.PI;
+        // Arrow openness...
+        double openness = Math.PI / 10;
+        double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? angle : -angle;
-        other = new Point2D(
-                targetPos.getX() + GraphNode.RADIUS * Math.cos(angle), 
-                targetPos.getY() + GraphNode.RADIUS * Math.sin(angle));
-        angle = openness + angle;
-
-        double x = targetPos.getX() + radius * Math.cos(angle);
-        double y = targetPos.getY() + radius * Math.sin(angle);
-
-        path.getElements().add(new MoveTo(sourcePos.getX(), sourcePos.getY()));
-        path.getElements().add(new LineTo(other.getX(), other.getY()));
-        path.getElements().add(new LineTo(x, y));
-        x = targetPos.getX() + radius * Math.cos((Math.PI*2) + angle - (openness*2));
-        y = targetPos.getY() + radius * Math.sin((Math.PI*2) + angle - (openness*2));
-        path.getElements().add(new LineTo(x, y));
         
-        path.getElements().add(new LineTo(other.getX(), other.getY()));
-        path.setStrokeWidth(width * 15);
+        // Second vertice of the arrow...
+        Point2D arrowA = new Point2D(
+                targetPos.getX() + radius * Math.cos(angle + openness), 
+                targetPos.getY() + radius * Math.sin(angle + openness));
+        // Third vertice of the arrow...
+        Point2D arrowB = new Point2D(
+                targetPos.getX() + radius * Math.cos(angle - openness), 
+                targetPos.getY() + radius * Math.sin(angle - openness));
+                
+        path.getElements().addAll(
+                new MoveTo(sourcePos.getX(), sourcePos.getY()),
+                new LineTo(targetPos.getX(), targetPos.getY()),
+                new LineTo(arrowA.getX(), arrowA.getY()),
+                new LineTo(arrowB.getX(), arrowB.getY()),
+                new LineTo(targetPos.getX(), targetPos.getY()));
         
-        if (grain > 0) {
+        path.setStrokeWidth(strokeWidth);
+        
+        if (grain > 0.0) {
             grainGroup.getChildren().clear();
-            createGrain(sourcePos, targetPos, width * 15);
+            double grainPadding = grain * 2;
+            double grainLength = grain * 3;
+            angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
+            angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
+            
+            Point2D sourceA = new Point2D(
+                    sourcePos.getX() + strokeWidth * Math.cos((Math.PI*2) + angle), 
+                    sourcePos.getY() + strokeWidth * Math.sin((Math.PI*2) + angle));
+            Point2D sourceB = new Point2D(
+                sourcePos.getX() + strokeWidth * Math.cos(Math.PI + angle), 
+                sourcePos.getY() + strokeWidth * Math.sin(Math.PI + angle));
+            
+            while (sourceA.distance(arrowA) > grainLength) {
+                sourceA = newPointInLine(sourceA, arrowA, grainPadding);
+                sourceB = newPointInLine(sourceB, arrowB, grainPadding);
+
+                Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
+                l.setStroke(Color.WHITE);
+                l.setStrokeWidth(grain);
+                grainGroup.getChildren().add(l);
+            }
+            
+            Path arrowHead = new Path(
+                    new MoveTo(targetPos.getX(), targetPos.getY()),
+                    new LineTo(arrowA.getX(), arrowA.getY()),
+                    new LineTo(arrowB.getX(), arrowB.getY()),
+                    new ClosePath()
+            );
+            arrowHead.setFill(Color.WHITE);
+            arrowHead.setStroke(Color.WHITE);
+            arrowHead.setStrokeWidth(strokeWidth);
+            
+            grainGroup.getChildren().add(arrowHead);
+            path.setClip(grainGroup);
         }
     }
     
     private void createTapered (Point2D sourcePos, Point2D targetPos) {
-        Point2D other = new Point2D(targetPos.getX() + 10, targetPos.getY());
-
+        Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
         double radius = GraphNode.RADIUS * (width * 3) / Math.PI;
-        double angle = targetPos.angle(sourcePos, other) * Math.PI / 180;
+        double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
 
-        double x = sourcePos.getX() + radius * Math.cos((Math.PI) + angle);
-        double y = sourcePos.getY() + radius * Math.sin((Math.PI) + angle);
-
-        path.getElements().add(new MoveTo(x, y));
-        x = sourcePos.getX() + radius * Math.cos((Math.PI*2) + angle);
-        y = sourcePos.getY() + radius * Math.sin((Math.PI*2) + angle);
-        path.getElements().add(new LineTo(x, y));
-        path.getElements().add(new LineTo(targetPos.getX(), targetPos.getY()));
-        path.getElements().add(new ClosePath());
+        Point2D sourceA = new Point2D(
+                sourcePos.getX() + radius * Math.cos(Math.PI + angle), 
+                sourcePos.getY() + radius * Math.sin(Math.PI + angle));
+        Point2D sourceB = new Point2D(
+                sourcePos.getX() + radius * Math.cos((Math.PI*2) + angle), 
+                sourcePos.getY() + radius * Math.sin((Math.PI*2) + angle));
+        
+        path.getElements().addAll(
+                new MoveTo(sourceA.getX(), sourceA.getY()),
+                new LineTo(sourceB.getX(), sourceB.getY()),
+                new LineTo(targetPos.getX(), targetPos.getY()),
+                new ClosePath()
+        );
+        
         path.setStrokeWidth(1.0);
         
-        if (grain > 0) {
+        if (grain > 0.0) {
+            double grainPadding = grain * 2;
+            double grainLength = grain * 3;
             grainGroup.getChildren().clear();
-            createGrain(sourcePos, targetPos, radius);
-        }
-    }
-    
-    private void createGrain (Point2D sourcePos, Point2D targetPos, double width) {
-        double angle = targetPos.angle(sourcePos, new Point2D(targetPos.getX()+10, targetPos.getY()));
-        angle *= Math.PI / 180;
-        angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
+            
+            while (sourceA.distance(targetPos) > grainLength) {
+                sourceA = newPointInLine(sourceA, targetPos, grainPadding);
+                sourceB = newPointInLine(sourceB, targetPos, grainPadding);
 
-        double x = sourcePos.getX() + width * Math.cos((Math.PI) + angle);
-        double y = sourcePos.getY() + width * Math.sin((Math.PI) + angle);
-        Point2D sourceA = new Point2D(x, y);
-        
-        x = sourcePos.getX() + width * Math.cos((Math.PI*2) + angle);
-        y = sourcePos.getY() + width * Math.sin((Math.PI*2) + angle);
-        Point2D sourceB = new Point2D(x, y);
-        
-        double grainPadding = grain*2;
-        double grainLength = grain*3;
-        if (edgeType == TYPE_ARROWED)
-            grainLength += GraphNode.RADIUS*1.5;
-        
-//        long time = Calendar.getInstance().getTimeInMillis();
-        
-        while (sourceA.distance(targetPos) > grainLength) {
-            sourceA = newPointInLine(sourceA, targetPos, grainPadding);
-            sourceB = newPointInLine(sourceB, targetPos, grainPadding);
+                Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
+                l.setStroke(Color.WHITE);
+                l.setStrokeWidth(grain);
+                grainGroup.getChildren().add(l);
+            }
             
-            Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
-            l.setStroke(Color.WHITE);
-            l.setStrokeWidth(grain);
-            grainGroup.getChildren().add(l);
+            path.setClip(grainGroup);
         }
-        
-        if (edgeType == TYPE_ARROWED) {
-            sourceA = newPointInLine(sourceA, targetPos, grainPadding);
-            sourceB = newPointInLine(sourceB, targetPos, grainPadding);
-            
-            Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
-            l.setStroke(Color.WHITE);
-            l.setStrokeWidth(GraphNode.RADIUS);
-            grainGroup.getChildren().add(l);
-        }
-        
-        path.setClip(grainGroup);
-        
-//        time = Calendar.getInstance().getTimeInMillis() - time;
-//        System.out.println("Time: " + time);
     }
     
     /** Returns a new position based on the line drawn between p1 and p2.
@@ -225,13 +240,16 @@ public class GraphEdge {
     }
     
     public void setFuzziness (double f) {
-        f *= 20;
+        // the less significance the fuzzier...
+        f = 1 - f;  
+        f *= 10;
         blur.setHeight(f);
         blur.setWidth(f);
     }
     
     public void setBrightness (double b) {
-        colorAdjust.setBrightness(b);
+        // the less significance the brighter...
+        colorAdjust.setBrightness(1.0 - b);
     }
     
     public ObjectProperty getColorProperty () {
@@ -316,6 +334,6 @@ public class GraphEdge {
      * @param grain the grain to set
      */
     public void setGrain(double grain) {
-        this.grain = grain * 40;
+        this.grain = (1 - grain) * 40;
     }
 }
