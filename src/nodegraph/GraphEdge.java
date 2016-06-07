@@ -5,7 +5,6 @@
  */
 package nodegraph;
 
-import java.util.Calendar;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Point2D;
@@ -20,7 +19,6 @@ import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.shape.StrokeLineJoin;
-import javafx.scene.shape.StrokeType;
 
 /**
  *
@@ -37,19 +35,88 @@ public class GraphEdge {
             DIRECTION_ONEWAY = 1,
             DIRECTION_BOTHWAYS = 2;
     
+    private static final double 
+            MINIMUM_ARROWED_WIDTH = 1.0,
+            MAXIMUM_ARROWED_WIDTH = 15,
+            
+            MINIMUM_TAPERED_WIDTH = 6,
+            MAXIMUM_TAPERED_WIDTH = GraphNode.RADIUS,
+            
+            MINIMUN_HUE = 0.67,             // = ~170
+            MAXIMUM_HUE = 0.847,            // = ~216
+            
+            MAXIMUM_BRIGHTNESS = 0.9,
+            
+            HUE_MULTIPLIER = MAXIMUM_HUE - MINIMUN_HUE,
+            TAPERED_WIDTH_MULTIPLIER = MAXIMUM_TAPERED_WIDTH - MINIMUM_TAPERED_WIDTH,
+            ARROWED_WIDTH_MULTIPLIER = MAXIMUM_ARROWED_WIDTH - MINIMUM_ARROWED_WIDTH,
+            BRIGHTNESS_MULTIPLIER = MAXIMUM_BRIGHTNESS,
+            GRAIN_MULTIPLIER = 40,
+            FUZZINESS_MULTIPLIER = 10,
+            
+            ARROW_HEAD_OPENNESS = Math.PI / 10,
+            ARROW_HEAD_SIZE = 25;
+    
+    
     private GraphNode source;
     private GraphNode target;
+    
+    /**
+     * Edge direction.
+     * E.g. none, one way, both ways.
+     */
     private byte direction;
+    
+    /**
+     * Edge type.
+     * e.g. Arrowed or tapered.
+     */
     private byte edgeType;
+    
+    /**
+     * Edge width. 
+     * Use getWidth() since its actual value depends on the edgeType.
+     */
     private double width;
+    
+    /**
+     * Edge grain.
+     * It's similar to a line stroke dash.
+     */
     private double grain;
     
-    private final Group bodyGroup;
+    /**
+     * Represents the edge drawable elements.
+     * It usually contains a single path element which represents the edge but
+     * it could have others such as labels.
+     */
+    private final Group edgeGroup;
+    
+    /**
+     * Represents the edge.
+     * So far this element is all that it's needed to represent an edge.
+     */
     private final Path path;
+    
+    /**
+     * Represents a helper object with which we create the grain effect.
+     */
     private final Group grainGroup;
     
+    /**
+     * Edge color.
+     */
     private final ObjectProperty<Color> color = new SimpleObjectProperty();
+    
+    /**
+     * Edge color adjustments.
+     * With it we handle color effects such as brightness, hue, opacity, etc.
+     */
     private final ColorAdjust colorAdjust;
+    
+    /**
+     * Blur or fuzziness edge effect.
+     */
     private final BoxBlur blur;
     
     public GraphEdge (GraphNode fromNode, GraphNode toNode, byte edgeType, byte direction) {
@@ -58,9 +125,9 @@ public class GraphEdge {
         this.edgeType = edgeType;
         this.direction = direction;
         
-        width = 1.0;
+        width = 0.0;
         grain = 0.0;
-        bodyGroup = new Group();
+        edgeGroup = new Group();
         path = new Path();
         grainGroup = new Group();
         colorAdjust = new ColorAdjust();
@@ -73,14 +140,17 @@ public class GraphEdge {
         path.setStrokeLineCap(StrokeLineCap.ROUND);
         
         blur.setIterations(3);
-        bodyGroup.setEffect(blur);
+        edgeGroup.setEffect(blur);
         
-        bodyGroup.getChildren().add(path);
+        edgeGroup.getChildren().add(path);
     }
     
+    /**
+     * Update the edge with the established features and the nodes current position.
+     */
     public void update () {
         double targetOffSet = GraphNode.RADIUS;
-        if (edgeType == TYPE_ARROWED) targetOffSet += (width * 10);
+        if (edgeType == TYPE_ARROWED) targetOffSet += getWidth();
         
         Point2D sourcePos = source.getPosition();
         Point2D targetPos = newPointInLine(target.getPosition(), sourcePos, targetOffSet);
@@ -100,24 +170,24 @@ public class GraphEdge {
         }
     }
     
+    /**
+     * Create an arrowed edge from sourcePos to targetPost.
+     */
     private void createArrow (Point2D sourcePos, Point2D targetPos) {
+        // Reference position used for creating the head of the arrow...
         Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
-        double strokeWidth = width * 15;
-        // Arrow radious...
-        double radius = GraphNode.RADIUS * 2 / Math.PI;
-        // Arrow openness...
-        double openness = Math.PI / 10;
+        double strokeWidth = getWidth();
         double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? angle : -angle;
         
         // Second vertice of the arrow...
         Point2D arrowA = new Point2D(
-                targetPos.getX() + radius * Math.cos(angle + openness), 
-                targetPos.getY() + radius * Math.sin(angle + openness));
+                targetPos.getX() + ARROW_HEAD_SIZE * Math.cos(angle + ARROW_HEAD_OPENNESS), 
+                targetPos.getY() + ARROW_HEAD_SIZE * Math.sin(angle + ARROW_HEAD_OPENNESS));
         // Third vertice of the arrow...
         Point2D arrowB = new Point2D(
-                targetPos.getX() + radius * Math.cos(angle - openness), 
-                targetPos.getY() + radius * Math.sin(angle - openness));
+                targetPos.getX() + ARROW_HEAD_SIZE * Math.cos(angle - ARROW_HEAD_OPENNESS), 
+                targetPos.getY() + ARROW_HEAD_SIZE * Math.sin(angle - ARROW_HEAD_OPENNESS));
                 
         path.getElements().addAll(
                 new MoveTo(sourcePos.getX(), sourcePos.getY()),
@@ -128,10 +198,12 @@ public class GraphEdge {
         
         path.setStrokeWidth(strokeWidth);
         
+        // Create grain effect when there is one...
         if (grain > 0.0) {
             grainGroup.getChildren().clear();
-            double grainPadding = grain * 2;
-            double grainLength = grain * 3;
+            // Spaces between each dash...
+            double dashPadding = grain * 2;
+            
             angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
             angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
             
@@ -142,9 +214,10 @@ public class GraphEdge {
                 sourcePos.getX() + strokeWidth * Math.cos(Math.PI + angle), 
                 sourcePos.getY() + strokeWidth * Math.sin(Math.PI + angle));
             
-            while (sourceA.distance(arrowA) > grainLength) {
-                sourceA = newPointInLine(sourceA, arrowA, grainPadding);
-                sourceB = newPointInLine(sourceB, arrowB, grainPadding);
+            // Here we place white lines that cut the edge perpendicularlly.
+            while (sourceA.distance(arrowA) >= grain) {
+                sourceA = newPointInLine(sourceA, arrowA, dashPadding);
+                sourceB = newPointInLine(sourceB, arrowB, dashPadding);
 
                 Line l = new Line(sourceA.getX(), sourceA.getY(), sourceB.getX(), sourceB.getY());
                 l.setStroke(Color.WHITE);
@@ -152,6 +225,8 @@ public class GraphEdge {
                 grainGroup.getChildren().add(l);
             }
             
+            // A replica of the head of the arrow is added so that the actual head
+            // won't dissapear when using "clip"
             Path arrowHead = new Path(
                     new MoveTo(targetPos.getX(), targetPos.getY()),
                     new LineTo(arrowA.getX(), arrowA.getY()),
@@ -168,17 +243,19 @@ public class GraphEdge {
     }
     
     private void createTapered (Point2D sourcePos, Point2D targetPos) {
+        // Reference position used for establishing the source points of the triangle.
         Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
-        double radius = GraphNode.RADIUS * (width * 3) / Math.PI;
+        // Triangle openness based on the given with.
+        double openness = getWidth();
         double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
 
         Point2D sourceA = new Point2D(
-                sourcePos.getX() + radius * Math.cos(Math.PI + angle), 
-                sourcePos.getY() + radius * Math.sin(Math.PI + angle));
+                sourcePos.getX() + openness * Math.cos(Math.PI + angle), 
+                sourcePos.getY() + openness * Math.sin(Math.PI + angle));
         Point2D sourceB = new Point2D(
-                sourcePos.getX() + radius * Math.cos((Math.PI*2) + angle), 
-                sourcePos.getY() + radius * Math.sin((Math.PI*2) + angle));
+                sourcePos.getX() + openness * Math.cos((Math.PI*2) + angle), 
+                sourcePos.getY() + openness * Math.sin((Math.PI*2) + angle));
         
         path.getElements().addAll(
                 new MoveTo(sourceA.getX(), sourceA.getY()),
@@ -194,7 +271,8 @@ public class GraphEdge {
             double grainLength = grain * 3;
             grainGroup.getChildren().clear();
             
-            while (sourceA.distance(targetPos) > grainLength) {
+            // Here we place white lines that cut the edge perpendicularlly.
+            while (sourceA.distance(targetPos) >= grainLength) {
                 sourceA = newPointInLine(sourceA, targetPos, grainPadding);
                 sourceB = newPointInLine(sourceB, targetPos, grainPadding);
 
@@ -226,13 +304,19 @@ public class GraphEdge {
         return new Point2D(x, y);
     }
     
+    private double getWidth () {
+        if (edgeType == TYPE_ARROWED)
+            return width * ARROWED_WIDTH_MULTIPLIER + MINIMUM_ARROWED_WIDTH;
+        
+        return width * TAPERED_WIDTH_MULTIPLIER + MINIMUM_TAPERED_WIDTH;
+    }
     
-    public void setWidth (double w) {
-        width = w <= 0 ? 0.1 : w;
+    public void setWidth (double width) {
+        this.width = width;
     }
     
     public void setHue (double h) {
-        colorAdjust.setHue(h);
+        colorAdjust.setHue(h * HUE_MULTIPLIER);
     }
     
     public void setOpacity (double o) {
@@ -240,16 +324,14 @@ public class GraphEdge {
     }
     
     public void setFuzziness (double f) {
-        // the less significance the fuzzier...
-        f = 1 - f;  
-        f *= 10;
+        f *= FUZZINESS_MULTIPLIER;
         blur.setHeight(f);
         blur.setWidth(f);
     }
     
     public void setBrightness (double b) {
         // the less significance the brighter...
-        colorAdjust.setBrightness(1.0 - b);
+        colorAdjust.setBrightness(b * BRIGHTNESS_MULTIPLIER);
     }
     
     public ObjectProperty getColorProperty () {
@@ -285,10 +367,10 @@ public class GraphEdge {
     }
 
     /**
-     * @return the path
+     * @return the edgeGroup
      */
-    public Group getBody() {
-        return bodyGroup;
+    public Group getEdgeGroup() {
+        return edgeGroup;
     }
     
     public Group getGrainGroup() {
@@ -334,6 +416,6 @@ public class GraphEdge {
      * @param grain the grain to set
      */
     public void setGrain(double grain) {
-        this.grain = (1 - grain) * 40;
+        this.grain = grain * GRAIN_MULTIPLIER;
     }
 }

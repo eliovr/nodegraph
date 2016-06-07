@@ -45,20 +45,14 @@ public class MainController implements Initializable {
     @FXML
     private ColorPicker edgeColor;
     
-
     @FXML
     private TextArea textAreaNodes;
     
     @FXML
     private Button buttonPlace;
     
-    @FXML
-    private CheckBox animate;
-    
     @FXML // ResourceBundle that was given to the FXMLLoader
     private ResourceBundle resources;
-    
-    private FruchtermanReingold frAlgorithm;
     
     // parent group where all nodes, edges and labeles should be.
     private Group rootGroup;
@@ -75,8 +69,8 @@ public class MainController implements Initializable {
         edgeColor.setValue(Color.BLACK);
         rootGroup = new Group();
         canvas.getChildren().add(rootGroup);
-        frAlgorithm = null;
         
+        // Update edges when changing edge type...
         edgeTypes.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
@@ -116,15 +110,12 @@ public class MainController implements Initializable {
                     }
                 }
                 
-                // Default attributes...
-//                String str = attributes.getOrDefault("str", null);    // strength
-//                String sig = attributes.getOrDefault("sig", null);    // significance
-                
-                double width = Double.parseDouble(attributes.getOrDefault("w", "0.2"));
-                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
+                // Default values are given here. All values should be between 0 and 1.
+                double width = Double.parseDouble(attributes.getOrDefault("w", "0.0"));
+                double hue = Double.parseDouble(attributes.getOrDefault("h", "0.847"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "1.0"));
-                double brightness = Double.parseDouble(attributes.getOrDefault("b", "1.0"));
+                double brightness = Double.parseDouble(attributes.getOrDefault("b", "0.5"));
                 double grain = Double.parseDouble(attributes.getOrDefault("g", "1.0"));
                 
                 String[] nodesArr;
@@ -158,88 +149,46 @@ public class MainController implements Initializable {
                 edge.setWidth(width);
                 edge.setHue(hue);
                 edge.setOpacity(opacity);
-                edge.setFuzziness(fuzziness);
-                edge.setBrightness(brightness);
+                edge.setFuzziness(1 - fuzziness);
+                edge.setBrightness(1 - brightness);
+                edge.setGrain(1 - grain);
                 edge.getColorProperty().bind(edgeColor.valueProperty());
-                edge.setGrain(grain);
 
                 edges.add(edge);
-                rootGroup.getChildren().add(0, edge.getBody());
+                rootGroup.getChildren().add(0, edge.getEdgeGroup());
             }
         }
         
         double minX = canvas.getWidth() / 2;
         double minY = canvas.getHeight() / 3;
+        
+        // Place nodes initially according to the amount of incoming edges...
         for (GraphNode node : nodes) {
             node.getBody().setTranslateX(minX + randomBetween(-50, 50));
             node.getBody().setTranslateY(minY + (node.getInboundEdges().size() * 25) + Math.random());
         }
         
+        // Initialize variables for the Fruchterman Reingold algorithm...
         double area = canvas.getWidth() * canvas.getHeight();
         double k = Math.sqrt(area / nodes.size());
         double temperature = canvas.getWidth() / 10;
         double speed = 1;
         
-        if (animate.isSelected()) {
-            buttonPlace.setDisable(true);
-            frAlgorithm = new FruchtermanReingold(area, k, temperature, speed, animate.isSelected());
-            frAlgorithm.setOnSucceeded((WorkerStateEvent e) -> {
-                buttonPlace.setDisable(false);
-            });
-            
-            new Thread(frAlgorithm).start();
-        } else {
-            for (int i = 0; i < 150; i++) {
-                // run algorithm...
-                fruchtermanReingold(area, k, temperature, speed);
-                // Cooling...
-                temperature *= (1.0 - i / 10000);
-            }
-            
-            // Update edges...
-            for (GraphEdge edge : edges)
-                edge.update();
+        // Run Fruchterman Reingold algorithm...
+        for (int i = 0; i < 100; i++) {
+            fruchtermanReingold(area, k, temperature, speed);
+            // Cooling...
+            temperature *= (1.0 - i / 10000);
         }
+
+        // Update edges...
+        for (GraphEdge edge : edges)
+            edge.update();
     }
     
     /**
-     * Animated version of the algorithm.
+     * See: Graph Drawing by Force directed Placement (Fruchterman et al, 1991)
      */
-    private class FruchtermanReingold extends Task<Object> {
-
-        double area;
-        double k;
-        double temperature;
-        double speed;
-        boolean animated;
-        
-        public FruchtermanReingold (double area, double k, double temperature, double speed, boolean animated) {
-            this.area = area;
-            this.k = k;
-            this.temperature = temperature;
-            this.speed = speed;
-            this.animated = animated;
-        }
-        
-        @Override
-        protected Object call() throws Exception {
-            for (int i = 0; i < 150; i++) {
-                // run algorithm...
-                fruchtermanReingold(area, k, temperature, speed);
-                // Cooling...
-                temperature *= (1.0 - i / 10000);
-                // Update edges...
-                for (GraphEdge edge : edges)
-                    edge.update();
-
-                Thread.sleep(30);
-            }
-            
-            return null;
-        }
-    }
-    
-    
     void fruchtermanReingold (double area, double k, double temp, double speed) {
         double force;
         
@@ -308,6 +257,8 @@ public class MainController implements Initializable {
     
     /**
      * Get or create node with the given label.
+     * Created nodes are added to the rootGroup for displaying.
+     * 
      * @param nodeLabel Node label id which is unique for every node.
      * @return The existing or newly created node.
      */
@@ -327,16 +278,9 @@ public class MainController implements Initializable {
         return node;
     }
     
-    
-    public int nodeIndex (String nodeLabel) {
-        for (GraphNode n : nodes) {
-            if (n.getLabel().equalsIgnoreCase(nodeLabel))
-                return n.getId();
-        }
-        
-        return -1;
-    }
-    
+    /**
+     * Helper method for generating a random number between the given parameters.
+     */
     public static double randomBetween(int lowest, int highest){
         return new Random().nextInt(highest-lowest) + lowest;
     }
