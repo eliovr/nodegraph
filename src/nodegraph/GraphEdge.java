@@ -42,8 +42,8 @@ public class GraphEdge {
             MINIMUM_TAPERED_WIDTH = 6,
             MAXIMUM_TAPERED_WIDTH = GraphNode.RADIUS,
             
-            MINIMUN_HUE = 0.67,             // = ~170
-            MAXIMUM_HUE = 0.847,            // = ~216
+            MINIMUN_HUE = 0.333,              // = ~170
+            MAXIMUM_HUE = 0.694,              // = ~216
             
             MAXIMUM_BRIGHTNESS = 0.9,
             
