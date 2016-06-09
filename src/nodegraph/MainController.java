@@ -111,7 +111,8 @@ public class MainController implements Initializable {
                 }
                 
                 // Default values are given here. All values should be between 0 and 1.
-                double width = Double.parseDouble(attributes.getOrDefault("w", "0.0"));
+                // Default width is an exception because it's different for tapered and arrow edges.
+                double width = Double.parseDouble(attributes.getOrDefault("w", "-1"));
                 double hue = Double.parseDouble(attributes.getOrDefault("h", "0.0"));
                 double opacity = Double.parseDouble(attributes.getOrDefault("o", "1.0"));
                 double fuzziness = Double.parseDouble(attributes.getOrDefault("f", "1.0"));
@@ -280,6 +281,8 @@ public class MainController implements Initializable {
     
     /**
      * Helper method for generating a random number between the given parameters.
+     * @param lowest lower boundary.
+     * @param highest upper boundary.
      */
     public static double randomBetween(int lowest, int highest){
         return new Random().nextInt(highest-lowest) + lowest;

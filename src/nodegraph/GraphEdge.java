@@ -36,11 +36,11 @@ public class GraphEdge {
             DIRECTION_BOTHWAYS = 2;
     
     private static final double 
-            MINIMUM_ARROWED_WIDTH = 1.0,
-            MAXIMUM_ARROWED_WIDTH = 15,
+            MINIMUM_ARROWED_WIDTH = 2.0,
+            MAXIMUM_ARROWED_WIDTH = GraphNode.RADIUS * 1.5,
             
-            MINIMUM_TAPERED_WIDTH = 6,
-            MAXIMUM_TAPERED_WIDTH = GraphNode.RADIUS,
+            MINIMUM_TAPERED_WIDTH = GraphNode.RADIUS * 0.2,
+            MAXIMUM_TAPERED_WIDTH = GraphNode.RADIUS * 2,
             
             MINIMUN_HUE = 0.333,              // = ~170
             MAXIMUM_HUE = 0.694,              // = ~216
@@ -54,9 +54,12 @@ public class GraphEdge {
             GRAIN_MULTIPLIER = 40,
             FUZZINESS_MULTIPLIER = 10,
             
-            ARROW_HEAD_OPENNESS = Math.PI / 10,
-            ARROW_HEAD_SIZE = 25;
+            ARROW_HEAD_OPENNESS = 10,
+            ARROW_HEAD_SIZE = 30;
     
+    public static final double 
+            DEFAULT_ARROW_WIDTH = 0.1,
+            DEFAULT_TAPERED_WIDTH = 0.5;
     
     private GraphNode source;
     private GraphNode target;
@@ -150,7 +153,6 @@ public class GraphEdge {
      */
     public void update () {
         double targetOffSet = GraphNode.RADIUS;
-        if (edgeType == TYPE_ARROWED) targetOffSet += getWidth();
         
         Point2D sourcePos = source.getPosition();
         Point2D targetPos = newPointInLine(target.getPosition(), sourcePos, targetOffSet);
@@ -176,43 +178,57 @@ public class GraphEdge {
     private void createArrow (Point2D sourcePos, Point2D targetPos) {
         // Reference position used for creating the head of the arrow...
         Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
-        double strokeWidth = getWidth();
+        double arrowWidth = getWidth() / 2;
         double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
-        angle = targetPos.getY() <= sourcePos.getY() ? angle : -angle;
         
-        // Second vertice of the arrow...
+        angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
+        refPos = newPointInLine(targetPos, sourcePos, ARROW_HEAD_SIZE);
+        
+        // Stick points at the source...
+        Point2D sourceA = new Point2D(
+                sourcePos.getX() + arrowWidth * Math.cos(angle), 
+                sourcePos.getY() + arrowWidth * Math.sin(angle));
+        Point2D sourceB = new Point2D(
+                sourcePos.getX() + arrowWidth * Math.cos(Math.PI + angle), 
+                sourcePos.getY() + arrowWidth * Math.sin(Math.PI + angle));
+
+        // Stick points at the beginning of the arrow head...
+        Point2D targetA = new Point2D(
+                refPos.getX() + arrowWidth * Math.cos(angle), 
+                refPos.getY() + arrowWidth * Math.sin(angle));
+        Point2D targetB = new Point2D(
+                refPos.getX() + arrowWidth * Math.cos(Math.PI + angle), 
+                refPos.getY() + arrowWidth * Math.sin(Math.PI + angle));
+
+        // Arrow head side points...
         Point2D arrowA = new Point2D(
-                targetPos.getX() + ARROW_HEAD_SIZE * Math.cos(angle + ARROW_HEAD_OPENNESS), 
-                targetPos.getY() + ARROW_HEAD_SIZE * Math.sin(angle + ARROW_HEAD_OPENNESS));
-        // Third vertice of the arrow...
+                refPos.getX() + (ARROW_HEAD_OPENNESS + arrowWidth) * Math.cos(angle), 
+                refPos.getY() + (ARROW_HEAD_OPENNESS + arrowWidth) * Math.sin(angle));
+
         Point2D arrowB = new Point2D(
-                targetPos.getX() + ARROW_HEAD_SIZE * Math.cos(angle - ARROW_HEAD_OPENNESS), 
-                targetPos.getY() + ARROW_HEAD_SIZE * Math.sin(angle - ARROW_HEAD_OPENNESS));
-                
-        path.getElements().addAll(
-                new MoveTo(sourcePos.getX(), sourcePos.getY()),
-                new LineTo(targetPos.getX(), targetPos.getY()),
-                new LineTo(arrowA.getX(), arrowA.getY()),
-                new LineTo(arrowB.getX(), arrowB.getY()),
-                new LineTo(targetPos.getX(), targetPos.getY()));
+                refPos.getX() + (ARROW_HEAD_OPENNESS + arrowWidth)  * Math.cos(Math.PI + angle), 
+                refPos.getY() + (ARROW_HEAD_OPENNESS + arrowWidth) * Math.sin(Math.PI + angle));
         
-        path.setStrokeWidth(strokeWidth);
+        // Draw arrow...
+        path.getElements().addAll(
+                new MoveTo(sourceA.getX(), sourceA.getY()),
+                new LineTo(targetA.getX(), targetA.getY()),
+                
+                new LineTo(arrowA.getX(), arrowA.getY()),
+                new LineTo(targetPos.getX(), targetPos.getY()),
+                new LineTo(arrowB.getX(), arrowB.getY()),
+                
+                new LineTo(targetB.getX(), targetB.getY()),
+                new LineTo(sourceB.getX(), sourceB.getY()),
+
+                new ClosePath()
+        );
         
         // Create grain effect when there is one...
         if (grain > 0.0) {
             grainGroup.getChildren().clear();
             // Spaces between each dash...
             double dashPadding = grain * 2;
-            
-            angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
-            angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
-            
-            Point2D sourceA = new Point2D(
-                    sourcePos.getX() + strokeWidth * Math.cos((Math.PI*2) + angle), 
-                    sourcePos.getY() + strokeWidth * Math.sin((Math.PI*2) + angle));
-            Point2D sourceB = new Point2D(
-                sourcePos.getX() + strokeWidth * Math.cos(Math.PI + angle), 
-                sourcePos.getY() + strokeWidth * Math.sin(Math.PI + angle));
             
             // Here we place white lines that cut the edge perpendicularlly.
             while (sourceA.distance(arrowA) >= grain) {
@@ -235,7 +251,6 @@ public class GraphEdge {
             );
             arrowHead.setFill(Color.WHITE);
             arrowHead.setStroke(Color.WHITE);
-            arrowHead.setStrokeWidth(strokeWidth);
             
             grainGroup.getChildren().add(arrowHead);
             path.setClip(grainGroup);
@@ -246,7 +261,7 @@ public class GraphEdge {
         // Reference position used for establishing the source points of the triangle.
         Point2D refPos = new Point2D(targetPos.getX() + 10, targetPos.getY());
         // Triangle openness based on the given with.
-        double openness = getWidth();
+        double openness = getWidth() / 2;
         double angle = targetPos.angle(sourcePos, refPos) * Math.PI / 180;
         angle = targetPos.getY() <= sourcePos.getY() ? (Math.PI / 2) + angle : (Math.PI / 2) - angle;
 
@@ -254,8 +269,8 @@ public class GraphEdge {
                 sourcePos.getX() + openness * Math.cos(Math.PI + angle), 
                 sourcePos.getY() + openness * Math.sin(Math.PI + angle));
         Point2D sourceB = new Point2D(
-                sourcePos.getX() + openness * Math.cos((Math.PI*2) + angle), 
-                sourcePos.getY() + openness * Math.sin((Math.PI*2) + angle));
+                sourcePos.getX() + openness * Math.cos(angle), 
+                sourcePos.getY() + openness * Math.sin(angle));
         
         path.getElements().addAll(
                 new MoveTo(sourceA.getX(), sourceA.getY()),
@@ -305,6 +320,14 @@ public class GraphEdge {
     }
     
     private double getWidth () {
+        double width = this.width;
+        
+        if (width < 0.0 || width > 1)
+            if (edgeType == TYPE_ARROWED)
+                width = DEFAULT_ARROW_WIDTH;
+            else
+                width = DEFAULT_TAPERED_WIDTH;
+        
         if (edgeType == TYPE_ARROWED)
             return width * ARROWED_WIDTH_MULTIPLIER + MINIMUM_ARROWED_WIDTH;
         
