@@ -52,7 +52,7 @@ public class GraphEdge {
             ARROWED_WIDTH_MULTIPLIER = MAXIMUM_ARROWED_WIDTH - MINIMUM_ARROWED_WIDTH,
             BRIGHTNESS_MULTIPLIER = MAXIMUM_BRIGHTNESS,
             GRAIN_MULTIPLIER = 40,
-            FUZZINESS_MULTIPLIER = 10,
+            FUZZINESS_MULTIPLIER = 25,
             
             ARROW_HEAD_OPENNESS = 10,
             ARROW_HEAD_SIZE = 30;
@@ -320,18 +320,18 @@ public class GraphEdge {
     }
     
     private double getWidth () {
-        double width = this.width;
+        double w = this.width;
         
-        if (width < 0.0 || width > 1)
+        if (w < 0.0 || w > 1)
             if (edgeType == TYPE_ARROWED)
-                width = DEFAULT_ARROW_WIDTH;
+                w = DEFAULT_ARROW_WIDTH;
             else
-                width = DEFAULT_TAPERED_WIDTH;
+                w = DEFAULT_TAPERED_WIDTH;
         
         if (edgeType == TYPE_ARROWED)
-            return width * ARROWED_WIDTH_MULTIPLIER + MINIMUM_ARROWED_WIDTH;
+            return w * ARROWED_WIDTH_MULTIPLIER + MINIMUM_ARROWED_WIDTH;
         
-        return width * TAPERED_WIDTH_MULTIPLIER + MINIMUM_TAPERED_WIDTH;
+        return w * TAPERED_WIDTH_MULTIPLIER + MINIMUM_TAPERED_WIDTH;
     }
     
     public void setWidth (double width) {
