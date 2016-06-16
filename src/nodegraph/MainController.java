@@ -21,7 +21,6 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.TextArea;
@@ -61,6 +60,9 @@ public class MainController implements Initializable {
     
     ArrayList<GraphEdge> edges;
     
+    private FruchtermanReingold frAlgorithm;
+    private Thread thread;
+    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         resources = rb;
@@ -69,6 +71,7 @@ public class MainController implements Initializable {
         edgeColor.setValue(Color.BLACK);
         rootGroup = new Group();
         canvas.getChildren().add(rootGroup);
+        frAlgorithm = null;
         
         // Update edges when changing edge type...
         edgeTypes.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
@@ -161,12 +164,23 @@ public class MainController implements Initializable {
         }
         
         double minX = canvas.getWidth() / 2;
-        double minY = canvas.getHeight() / 3;
+        double minY = canvas.getHeight() / 2;
         
+        
+        double radius = (nodes.size() * GraphNode.RADIUS * 1.5) / Math.PI;
+        double x, y;
+        double angle = 2 * Math.PI / nodes.size();
+        int j = 1;
         // Place nodes initially according to the amount of incoming edges...
         for (GraphNode node : nodes) {
-            node.getBody().setTranslateX(minX + randomBetween(-50, 50));
-            node.getBody().setTranslateY(minY + (node.getInboundEdges().size() * 25) + Math.random());
+            x = minX + radius * Math.cos(j * angle);
+            y = minY + radius * Math.sin(j * angle);
+            node.getBody().setTranslateX(x);
+            node.getBody().setTranslateY(y);
+            j++;
+            
+//            node.getBody().setTranslateX(minX + randomBetween(-50, 50));
+//            node.getBody().setTranslateY(minY + (node.getInboundEdges().size() * 25) + Math.random());
         }
         
         // Initialize variables for the Fruchterman Reingold algorithm...
@@ -175,16 +189,64 @@ public class MainController implements Initializable {
         double temperature = canvas.getWidth() / 10;
         double speed = 1;
         
+        buttonPlace.setDisable(true);
+        frAlgorithm = new FruchtermanReingold(area, k, temperature, speed);
+        frAlgorithm.setOnSucceeded((WorkerStateEvent e) -> {
+            buttonPlace.setDisable(false);
+        });
+
+        thread = new Thread(frAlgorithm);
+        thread.start();
+        
         // Run Fruchterman Reingold algorithm...
-        for (int i = 0; i < 100; i++) {
-            fruchtermanReingold(area, k, temperature, speed);
-            // Cooling...
-            temperature *= (1.0 - i / 10000);
-        }
+//        for (int i = 0; i < 100; i++) {
+//            fruchtermanReingold(area, k, temperature, speed);
+//            // Cooling...
+//            temperature *= (1.0 - i / 10000);
+//        }
 
         // Update edges...
-        for (GraphEdge edge : edges)
-            edge.update();
+//        for (GraphEdge edge : edges)
+//            edge.update();
+    }
+    
+    /**
+     * Animated version of the algorithm.
+     */
+    private class FruchtermanReingold extends Task<Object> {
+
+        double area;
+        double k;
+        double temperature;
+        double speed;
+        
+        public FruchtermanReingold (double area, double k, double temperature, double speed) {
+            this.area = area;
+            this.k = k;
+            this.temperature = temperature;
+            this.speed = speed;
+        }
+        
+        @Override
+        protected Object call() throws Exception {
+            for (int i = 0; i < 100; i++) {
+                try {
+                    // run algorithm...
+                    fruchtermanReingold(area, k, temperature, speed);
+                    // Cooling...
+                    temperature *= (1.0 - i / 10000);
+                    // Update edges...
+                    for (GraphEdge edge : edges)
+                        edge.update();
+
+                    Thread.sleep(30);
+                } catch (Exception e) {
+                    
+                }
+            }
+            
+            return null;
+        }
     }
     
     /**
