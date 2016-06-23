@@ -13,8 +13,6 @@ import java.util.ResourceBundle;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
-import javafx.concurrent.Task;
-import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -32,8 +30,6 @@ import javafx.scene.paint.Color;
  * @author elio
  */
 public class MainController implements Initializable {
-    
-    private static final float SPEED_DIVISOR = 1200;
     
     @FXML
     private AnchorPane canvas;
@@ -60,9 +56,6 @@ public class MainController implements Initializable {
     
     ArrayList<GraphEdge> edges;
     
-    private FruchtermanReingold frAlgorithm;
-    private Thread thread;
-    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         resources = rb;
@@ -71,7 +64,7 @@ public class MainController implements Initializable {
         edgeColor.setValue(Color.BLACK);
         rootGroup = new Group();
         canvas.getChildren().add(rootGroup);
-        frAlgorithm = null;
+        edgeColor.setValue(Color.web("#0000ff"));
         
         // Update edges when changing edge type...
         edgeTypes.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
@@ -166,94 +159,51 @@ public class MainController implements Initializable {
         double minX = canvas.getWidth() / 2;
         double minY = canvas.getHeight() / 2;
         
-        
         double radius = (nodes.size() * GraphNode.RADIUS * 1.5) / Math.PI;
         double x, y;
         double angle = 2 * Math.PI / nodes.size();
         int j = 1;
         // Place nodes initially according to the amount of incoming edges...
         for (GraphNode node : nodes) {
+            node.setPosition(
+                    minX + randomBetween(-50, 50), 
+                    minY + randomBetween(-50, 50));
             x = minX + radius * Math.cos(j * angle);
             y = minY + radius * Math.sin(j * angle);
             node.getBody().setTranslateX(x);
             node.getBody().setTranslateY(y);
             j++;
-            
-//            node.getBody().setTranslateX(minX + randomBetween(-50, 50));
-//            node.getBody().setTranslateY(minY + (node.getInboundEdges().size() * 25) + Math.random());
         }
         
         // Initialize variables for the Fruchterman Reingold algorithm...
         double area = canvas.getWidth() * canvas.getHeight();
-        double k = Math.sqrt(area / nodes.size());
-        double temperature = canvas.getWidth() / 10;
-        double speed = 1;
-        
-        buttonPlace.setDisable(true);
-        frAlgorithm = new FruchtermanReingold(area, k, temperature, speed);
-        frAlgorithm.setOnSucceeded((WorkerStateEvent e) -> {
-            buttonPlace.setDisable(false);
-        });
-
-        thread = new Thread(frAlgorithm);
-        thread.start();
+        double speed = 300;
+        double speedDivisor = 2000;
+        double areaMultiplier = 0.15;
+        double k = Math.sqrt((area * areaMultiplier) / (nodes.size() + 1));
+        double maxDisplace = Math.sqrt(areaMultiplier * area) / 10;
         
         // Run Fruchterman Reingold algorithm...
-//        for (int i = 0; i < 100; i++) {
-//            fruchtermanReingold(area, k, temperature, speed);
-//            // Cooling...
-//            temperature *= (1.0 - i / 10000);
-//        }
+        for (int i = 0; i < 100; i++) {
+            fruchtermanReingold(area, k, speed, speedDivisor, maxDisplace);
+        }
 
         // Update edges...
-//        for (GraphEdge edge : edges)
-//            edge.update();
+        for (GraphEdge edge : edges)
+            edge.update();
     }
     
     /**
-     * Animated version of the algorithm.
-     */
-    private class FruchtermanReingold extends Task<Object> {
-
-        double area;
-        double k;
-        double temperature;
-        double speed;
-        
-        public FruchtermanReingold (double area, double k, double temperature, double speed) {
-            this.area = area;
-            this.k = k;
-            this.temperature = temperature;
-            this.speed = speed;
-        }
-        
-        @Override
-        protected Object call() throws Exception {
-            for (int i = 0; i < 100; i++) {
-                try {
-                    // run algorithm...
-                    fruchtermanReingold(area, k, temperature, speed);
-                    // Cooling...
-                    temperature *= (1.0 - i / 10000);
-                    // Update edges...
-                    for (GraphEdge edge : edges)
-                        edge.update();
-
-                    Thread.sleep(30);
-                } catch (Exception e) {
-                    
-                }
-            }
-            
-            return null;
-        }
-    }
-    
-    /**
+     * Adapted from Gephi's Fruchterman Reingold's algorithm implementation.
      * See: Graph Drawing by Force directed Placement (Fruchterman et al, 1991)
      */
-    void fruchtermanReingold (double area, double k, double temp, double speed) {
+    void fruchtermanReingold (double area, double k, double speed, double speedDivisor, double maxDisplace) {
         double force;
+        
+        for (GraphNode n : nodes) {
+            n.dx = 0;
+            n.dy = 0;
+        }
         
         // Calculate repulsive forces...
         for (GraphNode n1 : nodes) {
@@ -298,19 +248,18 @@ public class MainController implements Initializable {
         }
         
         for (GraphNode n : nodes) {
-            n.dx *= speed / SPEED_DIVISOR;
-            n.dy *= speed / SPEED_DIVISOR;
+            n.dx *= speed / speedDivisor;
+            n.dy *= speed / speedDivisor;
         }
 
         for (GraphNode n : nodes) {
             Point2D pos = n.getPosition();
-
             double deltaLength = Math.sqrt(n.dx * n.dx + n.dy * n.dy);
 
             if (deltaLength > 0) {
-                double min = Math.min(deltaLength, temp);
-                double x = pos.getX() + (n.dx / deltaLength) * min;
-                double y = pos.getY() + (n.dy / deltaLength) * min;
+                double min = Math.min(maxDisplace * (speed / speedDivisor), deltaLength);
+                double x = pos.getX() + n.dx / deltaLength * min;
+                double y = pos.getY() + n.dy / deltaLength * min;
 
                 n.setPosition(x, y);
             }

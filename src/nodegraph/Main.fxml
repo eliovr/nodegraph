@@ -8,7 +8,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane id="AnchorPane" prefHeight="580.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="nodegraph.MainController">
+<AnchorPane id="AnchorPane" prefHeight="616.0" prefWidth="872.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="nodegraph.MainController">
    <children>
       <GridPane layoutX="243.0" layoutY="148.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <columnConstraints>
@@ -22,7 +22,7 @@
             <AnchorPane fx:id="canvas" prefHeight="200.0" prefWidth="200.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1" />
             <VBox prefHeight="580.0" prefWidth="200.0" style="-fx-background-color: #F2F2F2;">
                <children>
-                  <TextArea fx:id="textAreaNodes" prefHeight="336.0" prefWidth="177.0" promptText="Nodes e.g. 1&gt;2">
+                  <TextArea fx:id="textAreaNodes" prefHeight="368.0" prefWidth="180.0" promptText="Nodes e.g. 1&gt;2">
                      <VBox.margin>
                         <Insets bottom="15.0" right="10.0" />
                      </VBox.margin>

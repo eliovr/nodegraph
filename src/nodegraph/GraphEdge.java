@@ -283,11 +283,10 @@ public class GraphEdge {
         
         if (grain > 0.0) {
             double grainPadding = grain * 2;
-            double grainLength = grain * 3;
             grainGroup.getChildren().clear();
             
             // Here we place white lines that cut the edge perpendicularlly.
-            while (sourceA.distance(targetPos) >= grainLength) {
+            while (sourceA.distance(targetPos) >= grain) {
                 sourceA = newPointInLine(sourceA, targetPos, grainPadding);
                 sourceB = newPointInLine(sourceB, targetPos, grainPadding);
 
