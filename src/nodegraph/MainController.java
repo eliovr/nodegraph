@@ -165,9 +165,6 @@ public class MainController implements Initializable {
         int j = 1;
         // Place nodes initially according to the amount of incoming edges...
         for (GraphNode node : nodes) {
-            node.setPosition(
-                    minX + randomBetween(-50, 50), 
-                    minY + randomBetween(-50, 50));
             x = minX + radius * Math.cos(j * angle);
             y = minY + radius * Math.sin(j * angle);
             node.getBody().setTranslateX(x);
@@ -179,12 +176,12 @@ public class MainController implements Initializable {
         double area = canvas.getWidth() * canvas.getHeight();
         double speed = 300;
         double speedDivisor = 2000;
-        double areaMultiplier = 0.15;
-        double k = Math.sqrt((area * areaMultiplier) / (nodes.size() + 1));
+        double areaMultiplier = 0.2;
+        double k = Math.sqrt((area * areaMultiplier) / nodes.size());
         double maxDisplace = Math.sqrt(areaMultiplier * area) / 10;
         
         // Run Fruchterman Reingold algorithm...
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 150; i++) {
             fruchtermanReingold(area, k, speed, speedDivisor, maxDisplace);
         }
 
@@ -260,6 +257,12 @@ public class MainController implements Initializable {
                 double min = Math.min(maxDisplace * (speed / speedDivisor), deltaLength);
                 double x = pos.getX() + n.dx / deltaLength * min;
                 double y = pos.getY() + n.dy / deltaLength * min;
+                
+                // Don't let it leave the canvas...
+                x = x < GraphNode.RADIUS ? GraphNode.RADIUS + 1 : x;
+                x = x > canvas.getWidth() - GraphNode.RADIUS ? canvas.getWidth() - GraphNode.RADIUS - 1 : x;
+                y = y < GraphNode.RADIUS ? GraphNode.RADIUS + 1 : y;
+                y = y > canvas.getHeight() - GraphNode.RADIUS ? canvas.getHeight() - GraphNode.RADIUS - 1 : y;
 
                 n.setPosition(x, y);
             }
