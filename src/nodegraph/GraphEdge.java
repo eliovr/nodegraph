@@ -37,7 +37,7 @@ public class GraphEdge {
     
     private static final double 
             MINIMUM_ARROWED_WIDTH = 2.0,
-            MAXIMUM_ARROWED_WIDTH = GraphNode.RADIUS * 1.5,
+            MAXIMUM_ARROWED_WIDTH = GraphNode.RADIUS * 2.0,
             
             MINIMUM_TAPERED_WIDTH = GraphNode.RADIUS * 0.2,
             MAXIMUM_TAPERED_WIDTH = GraphNode.RADIUS * 2,
